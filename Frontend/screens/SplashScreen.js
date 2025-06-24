@@ -11,10 +11,10 @@ export default function SplashScreen() {
         source={require('../assets/jobnest-logo.png')} 
         style={styles.logo}
       />
-      <Text style={styles.tagline}>Your dream job is just a tap away.</Text>
+      <Text style={styles.tagline}>"Your dream job is just a tap away."</Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('UserTypeSelection')}
+        onPress={() => navigation.navigate('Login')}
       >
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
@@ -31,13 +31,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 200,
+    height: 200,
     marginBottom: 30,
     resizeMode: 'contain',
+    borderRadius:20,
   },
   tagline: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#ccc',
     textAlign: 'center',
     marginBottom: 40,
@@ -46,7 +47,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
     paddingVertical: 15,
     paddingHorizontal: 50,
-    borderRadius: 30,
+    borderRadius: 10,
   },
   buttonText: {
     color: '#fff',
