@@ -30,7 +30,7 @@ app.use(limiter)
 // CORS
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: "http://192.168.1.162:8081",
     credentials: true,
   })
 )
