@@ -12,6 +12,7 @@ const authRoutes = require("./routes/auth")
 const userRoutes = require("./routes/users")
 const projectRoutes = require("./routes/projects")
 const applicationRoutes = require("./routes/applications")
+const uploadRoutes = require("./routes/upload") // ✅ NEW
 
 const app = express()
 
@@ -20,35 +21,35 @@ app.use(helmet())
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: "Too many requests from this IP, please try again later.",
 })
 app.use(limiter)
 
-// CORS configuration
+// CORS
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
-  }),
+  })
 )
 
-// Body parsing middleware
+// Body parser
 app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
-// Swagger configuration
+// Swagger config
 const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "TalentLink AI API",
+      title: "JobNest AI API",
       version: "1.0.0",
-      description: "A comprehensive job and project listing platform API with AI-powered talent matching",
+      description: "Job/project platform API with AI-powered talent matching",
       contact: {
-        name: "TalentLink AI Team",
-        email: "support@talentlink.ai",
+        name: "JobNest AI Team",
+        email: "support@jobnest.ai",
       },
     },
     servers: [
@@ -78,8 +79,9 @@ app.use("/api/auth", authRoutes)
 app.use("/api/users", userRoutes)
 app.use("/api/projects", projectRoutes)
 app.use("/api/applications", applicationRoutes)
+app.use("/api/upload", uploadRoutes) // ✅ NEW UPLOAD ROUTES
 
-// Health check endpoint
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
@@ -89,7 +91,7 @@ app.get("/health", (req, res) => {
   })
 })
 
-// 404 handler
+// 404
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
@@ -100,7 +102,6 @@ app.use("*", (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack)
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
@@ -108,7 +109,7 @@ app.use((err, req, res, next) => {
   })
 })
 
-// Database connection
+// Connect to MongoDB and start server
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
@@ -117,12 +118,11 @@ mongoose
   .then(() => {
     console.log("✅ Connected to MongoDB")
 
-    // Start server
     const PORT = process.env.PORT || 5000
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`)
-      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`)
-      console.log(`🏥 Health Check: http://localhost:${PORT}/health`)
+      console.log(`📚 Swagger: http://localhost:${PORT}/api-docs`)
+      console.log(`🏥 Health: http://localhost:${PORT}/health`)
     })
   })
   .catch((error) => {
