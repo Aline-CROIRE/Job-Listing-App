@@ -8,6 +8,10 @@ const { isTalent } = require("../middleware/role")
 const { parseCVContent } = require("../utils/aiHelper")
 const User = require("../models/User")
 
+const pdf = require("pdf-parse")
+const mammoth = require("mammoth")
+const textract = require("textract")
+
 const router = express.Router()
 
 // Configure Cloudinary
@@ -110,10 +114,20 @@ router.post("/cv", authMiddleware, isTalent, upload.single("cv"), async (req, re
 
     const { autoFill = true } = req.body
 
+    // Extract text from the uploaded file
+    let cvText = ""
+    try {
+      cvText = await extractTextFromFile(req.file)
+      console.log("📄 Extracted CV text length:", cvText.length)
+    } catch (extractError) {
+      console.error("Text extraction error:", extractError)
+      // Continue with upload even if text extraction fails
+    }
+
     // Upload to Cloudinary
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "talentlink/cvs",
-      resource_type: "raw", // For non-image files
+      resource_type: "raw",
       public_id: `cv-${req.user._id}-${Date.now()}`,
     })
 
@@ -121,54 +135,72 @@ router.post("/cv", authMiddleware, isTalent, upload.single("cv"), async (req, re
     fs.unlinkSync(req.file.path)
 
     let parsedData = null
-    if (autoFill === "true" || autoFill === true) {
+    let profileUpdated = false
+
+    if ((autoFill === "true" || autoFill === true) && cvText.length > 100) {
       try {
-        // For demo purposes, we'll simulate CV parsing
-        // In production, you'd use actual CV parsing service
-        parsedData = await parseCVContent(req.file.originalname)
+        console.log("🤖 Starting AI CV parsing...")
+        parsedData = await parseCVContent(cvText)
+        console.log("✅ CV parsed successfully:", {
+          skills: parsedData.skills?.length || 0,
+          experience: parsedData.experience?.length || 0,
+          education: parsedData.education?.length || 0,
+        })
+
+        // Update user profile with parsed data
+        if (
+          parsedData &&
+          (parsedData.skills?.length > 0 || parsedData.experience?.length > 0 || parsedData.education?.length > 0)
+        ) {
+          const updateData = await buildProfileUpdateData(req.user, parsedData)
+
+          const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
+            new: true,
+            runValidators: true,
+          })
+
+          profileUpdated = true
+          console.log("✅ Profile updated with parsed CV data")
+
+          res.json({
+            success: true,
+            message: "CV uploaded and profile updated successfully with AI parsing",
+            cvUrl: result.secure_url,
+            parsedData,
+            profileUpdated: true,
+            user: updatedUser,
+            extractedText: cvText.substring(0, 500) + "...", // First 500 chars for verification
+          })
+        } else {
+          throw new Error("No useful data extracted from CV")
+        }
       } catch (parseError) {
         console.error("CV parsing error:", parseError)
         // Continue without parsing if it fails
+        parsedData = { error: parseError.message }
       }
     }
 
-    // Update user's CV URL
-    const updateData = {
-      "talentProfile.cvUrl": result.secure_url,
+    // If parsing failed or was disabled, just update CV URL
+    if (!profileUpdated) {
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { "talentProfile.cvUrl": result.secure_url },
+        { new: true, runValidators: true },
+      )
+
+      res.json({
+        success: true,
+        message: parsedData?.error
+          ? "CV uploaded successfully, but AI parsing failed. Please update your profile manually."
+          : "CV uploaded successfully",
+        cvUrl: result.secure_url,
+        profileUpdated: false,
+        user: updatedUser,
+        ...(parsedData && { parsedData }),
+        ...(cvText && { extractedText: cvText.substring(0, 500) + "..." }),
+      })
     }
-
-    // Auto-fill profile if parsing was successful
-    if (parsedData && autoFill) {
-      if (parsedData.skills && parsedData.skills.length > 0) {
-        updateData["talentProfile.skills"] = [
-          ...new Set([...(req.user.talentProfile?.skills || []), ...parsedData.skills]),
-        ]
-      }
-
-      if (parsedData.experience && parsedData.experience.length > 0) {
-        updateData["talentProfile.experience"] = [
-          ...(req.user.talentProfile?.experience || []),
-          ...parsedData.experience,
-        ]
-      }
-
-      if (parsedData.education && parsedData.education.length > 0) {
-        updateData["talentProfile.education"] = [...(req.user.talentProfile?.education || []), ...parsedData.education]
-      }
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(req.user._id, updateData, {
-      new: true,
-      runValidators: true,
-    })
-
-    res.json({
-      success: true,
-      message: "CV uploaded successfully",
-      cvUrl: result.secure_url,
-      ...(parsedData && { parsedData }),
-      user: updatedUser,
-    })
   } catch (error) {
     // Clean up local file if it exists
     if (req.file && fs.existsSync(req.file.path)) {
@@ -179,9 +211,111 @@ router.post("/cv", authMiddleware, isTalent, upload.single("cv"), async (req, re
     res.status(500).json({
       success: false,
       message: "Server error during CV upload",
+      error: error.message,
     })
   }
 })
+
+/**
+ * Extract text content from uploaded file based on file type
+ */
+async function extractTextFromFile(file) {
+  const fileExtension = path.extname(file.originalname).toLowerCase()
+
+  try {
+    switch (fileExtension) {
+      case ".pdf":
+        return await extractFromPDF(file.path)
+
+      case ".doc":
+      case ".docx":
+        return await extractFromWord(file.path)
+
+      case ".txt":
+        return fs.readFileSync(file.path, "utf8")
+
+      default:
+        // Try textract as fallback for other formats
+        return await extractWithTextract(file.path)
+    }
+  } catch (error) {
+    console.error(`Failed to extract text from ${fileExtension} file:`, error)
+    throw error
+  }
+}
+
+/**
+ * Extract text from PDF file
+ */
+async function extractFromPDF(filePath) {
+  try {
+    const dataBuffer = fs.readFileSync(filePath)
+    const data = await pdf(dataBuffer)
+    return data.text
+  } catch (error) {
+    console.error("PDF extraction error:", error)
+    throw new Error("Failed to extract text from PDF")
+  }
+}
+
+/**
+ * Extract text from Word document
+ */
+async function extractFromWord(filePath) {
+  try {
+    const result = await mammoth.extractRawText({ path: filePath })
+    return result.value
+  } catch (error) {
+    console.error("Word extraction error:", error)
+    throw new Error("Failed to extract text from Word document")
+  }
+}
+
+/**
+ * Extract text using textract (fallback method)
+ */
+async function extractWithTextract(filePath) {
+  return new Promise((resolve, reject) => {
+    textract.fromFileWithPath(filePath, (error, text) => {
+      if (error) {
+        reject(error)
+      } else {
+        resolve(text)
+      }
+    })
+  })
+}
+
+/**
+ * Build profile update data from parsed CV
+ */
+async function buildProfileUpdateData(user, parsedData) {
+  const updateData = {}
+
+  // Update skills (merge with existing, avoid duplicates)
+  if (parsedData.skills && parsedData.skills.length > 0) {
+    const existingSkills = user.talentProfile?.skills || []
+    const newSkills = parsedData.skills.filter(
+      (skill) => !existingSkills.some((existing) => existing.toLowerCase() === skill.toLowerCase()),
+    )
+
+    updateData["talentProfile.skills"] = [...existingSkills, ...newSkills]
+  }
+
+  // Update experience (append to existing)
+  if (parsedData.experience && parsedData.experience.length > 0) {
+    const existingExperience = user.talentProfile?.experience || []
+    updateData["talentProfile.experience"] = [...existingExperience, ...parsedData.experience]
+  }
+
+  // Update education (append to existing)
+  if (parsedData.education && parsedData.education.length > 0) {
+    const existingEducation = user.talentProfile?.education || []
+    updateData["talentProfile.education"] = [...existingEducation, ...parsedData.education]
+  }
+
+  return updateData
+}
 
 /**
  * @swagger

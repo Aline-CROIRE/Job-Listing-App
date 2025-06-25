@@ -17,6 +17,7 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.10.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.40.0",
     "cors": "^2.8.5",
@@ -27,12 +28,15 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.6.0",
     "mongoose": "^7.5.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^6.9.4",
     "openai": "^5.7.0",
+    "pdf-parse": "^1.1.1",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0"
+    "swagger-ui-express": "^5.0.0",
+    "textract": "^2.5.0"
   },
   "devDependencies": {
     "jest": "^29.6.2",
