@@ -8,14 +8,18 @@ export const UserProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const backendUrl = 'http:// 192.168.1.162:5000'
+  // Make sure no spaces in the URL string!
+  const backendUrl = 'http://192.168.1.120:5000';
+
   const login = async (email, password) => {
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await axios.post(`${backendUrl}/api/auth/login`, { email, password });
       setUser(res.data.user);
       setToken(res.data.token);
+      return res.data;
     } catch (err) {
+      // You might want to throw a more descriptive error here or log
       throw err;
     } finally {
       setLoading(false);
@@ -23,8 +27,8 @@ export const UserProvider = ({ children }) => {
   };
 
   const register = async (name, email, password, role = 'talent') => {
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await axios.post(`${backendUrl}/api/auth/register`, { name, email, password, role });
       setUser(res.data.user);
       setToken(res.data.token);
@@ -37,12 +41,14 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateProfile = async (updateData) => {
+    if (!token) throw new Error('User not authenticated');
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await axios.put(`${backendUrl}/api/users/profile`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(res.data.user);
+      return res.data;
     } catch (err) {
       throw err;
     } finally {
@@ -51,12 +57,14 @@ export const UserProvider = ({ children }) => {
   };
 
   const updateTalentProfile = async (talentData) => {
+    if (!token) throw new Error('User not authenticated');
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await axios.put(`${backendUrl}/api/users/talent-profile`, talentData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(res.data.user);
+      return res.data;
     } catch (err) {
       throw err;
     } finally {
@@ -65,12 +73,14 @@ export const UserProvider = ({ children }) => {
   };
 
   const getUserProfile = async () => {
+    if (!token) throw new Error('User not authenticated');
+    setLoading(true);
     try {
-      setLoading(true);
       const res = await axios.get(`${backendUrl}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(res.data.user);
+      return res.data;
     } catch (err) {
       throw err;
     } finally {

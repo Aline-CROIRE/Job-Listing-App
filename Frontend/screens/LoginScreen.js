@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 
@@ -21,6 +22,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     setErrorMsg('');
+
     if (!email || !password) {
       setErrorMsg('Please fill in all fields');
       return;
@@ -28,9 +30,21 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await login(email, password);
+      Alert.alert('Login Successful', 'Welcome back!', [
+        { text: 'Continue', onPress: () => navigation.replace('Home') }, // Replace with your main screen
+      ]);
     } catch (error) {
-      const msg = error.response?.data?.message || 'Login failed';
-      setErrorMsg(msg);
+      const response = error?.response?.data;
+      if (Array.isArray(response?.errors)) {
+        const messages = response.errors.map(err => err.msg).join('\n');
+        setErrorMsg(messages);
+      } else if (response?.message) {
+        setErrorMsg(response.message);
+      } else if (error.message) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg('Login failed. Please try again.');
+      }
     }
   };
 
@@ -76,11 +90,13 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {errorMsg ? (
-        <Text style={styles.errorMsg}>{errorMsg}</Text>
-      ) : null}
+      {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+      <TouchableOpacity
+        style={[styles.button, loading && { opacity: 0.7 }]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -185,5 +201,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 10,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
