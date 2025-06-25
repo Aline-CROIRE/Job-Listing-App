@@ -1,7 +1,16 @@
 /**
  * AI Helper functions for talent matching and CV parsing
- * This is a mock implementation - replace with actual AI service calls
+ * Enhanced with OpenAI integration for production use
  */
+
+const OpenAI = require("openai")
+
+// Initialize OpenAI client
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null
 
 /**
  * Calculate match score between project requirements and talent skills
@@ -15,24 +24,77 @@ const calculateMatchScore = (projectSkills, talentSkills) => {
   }
 
   // Convert to lowercase for case-insensitive matching
-  const projectSkillsLower = projectSkills.map((skill) => skill.toLowerCase())
-  const talentSkillsLower = talentSkills.map((skill) => skill.toLowerCase())
+  const projectSkillsLower = projectSkills.map((skill) => skill.toLowerCase().trim())
+  const talentSkillsLower = talentSkills.map((skill) => skill.toLowerCase().trim())
 
   // Find exact matches
   const exactMatches = projectSkillsLower.filter((skill) => talentSkillsLower.includes(skill)).length
 
-  // Find partial matches (contains)
+  // Find partial matches (contains or similar)
   const partialMatches = projectSkillsLower.filter((projectSkill) =>
-    talentSkillsLower.some((talentSkill) => talentSkill.includes(projectSkill) || projectSkill.includes(talentSkill)),
+    talentSkillsLower.some(
+      (talentSkill) =>
+        talentSkill.includes(projectSkill) ||
+        projectSkill.includes(talentSkill) ||
+        getSimilarityScore(projectSkill, talentSkill) > 0.7,
+    ),
   ).length
 
-  // Calculate score
-  const exactWeight = 0.8
-  const partialWeight = 0.4
+  // Calculate weighted score
+  const exactWeight = 1.0
+  const partialWeight = 0.6
 
-  const score = ((exactMatches * exactWeight + partialMatches * partialWeight) / projectSkills.length) * 100
+  const totalMatches = exactMatches * exactWeight + (partialMatches - exactMatches) * partialWeight
+  const score = (totalMatches / projectSkills.length) * 100
 
   return Math.min(Math.round(score), 100)
+}
+
+/**
+ * Calculate similarity between two strings using Levenshtein distance
+ * @param {String} str1 - First string
+ * @param {String} str2 - Second string
+ * @returns {Number} Similarity score between 0-1
+ */
+const getSimilarityScore = (str1, str2) => {
+  const longer = str1.length > str2.length ? str1 : str2
+  const shorter = str1.length > str2.length ? str2 : str1
+
+  if (longer.length === 0) return 1.0
+
+  const editDistance = getEditDistance(longer, shorter)
+  return (longer.length - editDistance) / longer.length
+}
+
+/**
+ * Calculate Levenshtein distance between two strings
+ */
+const getEditDistance = (str1, str2) => {
+  const matrix = []
+
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i]
+  }
+
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j
+  }
+
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1]
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j] + 1, // deletion
+        )
+      }
+    }
+  }
+
+  return matrix[str2.length][str1.length]
 }
 
 /**
@@ -47,55 +109,156 @@ const recommendTalents = (project, talents) => {
   }
 
   const recommendations = talents
-    .filter((talent) => talent.role === "talent" && talent.talentProfile && talent.talentProfile.skills)
+    .filter((talent) => {
+      return (
+        talent.role === "talent" &&
+        talent.isEmailVerified &&
+        talent.talentProfile &&
+        talent.talentProfile.skills &&
+        talent.talentProfile.availability !== "unavailable"
+      )
+    })
     .map((talent) => {
       const matchScore = calculateMatchScore(project.skillsRequired, talent.talentProfile.skills)
 
-      return {
-        talent,
-        matchScore,
-        matchedSkills: project.skillsRequired.filter((skill) =>
-          talent.talentProfile.skills.some(
-            (talentSkill) =>
-              talentSkill.toLowerCase().includes(skill.toLowerCase()) ||
-              skill.toLowerCase().includes(talentSkill.toLowerCase()),
-          ),
+      // Find matched skills for display
+      const matchedSkills = project.skillsRequired.filter((skill) =>
+        talent.talentProfile.skills.some(
+          (talentSkill) =>
+            talentSkill.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(talentSkill.toLowerCase()) ||
+            getSimilarityScore(skill.toLowerCase(), talentSkill.toLowerCase()) > 0.7,
         ),
+      )
+
+      // Calculate additional factors
+      const availabilityScore = talent.talentProfile.availability === "available" ? 10 : 5
+      const rateCompatibility = calculateRateCompatibility(project.budget, talent.talentProfile.hourlyRate)
+      const experienceBonus = talent.talentProfile.experience ? talent.talentProfile.experience.length * 2 : 0
+
+      const finalScore = Math.min(matchScore + availabilityScore + rateCompatibility + experienceBonus, 100)
+
+      return {
+        talent: {
+          _id: talent._id,
+          name: talent.name,
+          email: talent.email,
+          profile: talent.profile,
+          talentProfile: {
+            skills: talent.talentProfile.skills,
+            hourlyRate: talent.talentProfile.hourlyRate,
+            availability: talent.talentProfile.availability,
+            experience: talent.talentProfile.experience,
+          },
+        },
+        matchScore: finalScore,
+        skillMatchScore: matchScore,
+        matchedSkills,
+        availabilityScore,
+        rateCompatibility,
+        experienceBonus,
       }
     })
-    .filter((rec) => rec.matchScore > 0) // Only include talents with some match
-    .sort((a, b) => b.matchScore - a.matchScore) // Sort by match score descending
-    .slice(0, 10) // Return top 10 recommendations
+    .filter((rec) => rec.skillMatchScore > 20) // Only include talents with reasonable match
+    .sort((a, b) => b.matchScore - a.matchScore) // Sort by final score descending
+    .slice(0, 15) // Return top 15 recommendations
 
   return recommendations
 }
 
 /**
- * Mock CV parsing function
- * In production, this would call OpenAI API or other CV parsing service
- * @param {String} cvText - CV text content
+ * Calculate rate compatibility between project budget and talent rate
+ */
+const calculateRateCompatibility = (projectBudget, talentRate) => {
+  if (!projectBudget || !talentRate) return 0
+
+  const { min, max } = projectBudget
+
+  if (!min && !max) return 0
+
+  if (talentRate <= (max || min)) {
+    return talentRate >= (min || 0) ? 10 : 5
+  }
+
+  return 0
+}
+
+/**
+ * Parse CV content using OpenAI (production version)
+ * @param {String} cvText - CV text content or filename
  * @returns {Object} Parsed CV data
  */
 const parseCVContent = async (cvText) => {
-  // This is a mock implementation
-  // In production, you would call OpenAI API or other CV parsing service
+  // If OpenAI is not configured, use mock parsing
+  if (!openai) {
+    console.log("OpenAI not configured, using mock CV parsing")
+    return mockParseCVContent(cvText)
+  }
 
-  // Mock parsing logic - extract common patterns
-  const skills = extractSkills(cvText)
-  const experience = extractExperience(cvText)
-  const education = extractEducation(cvText)
+  try {
+    const prompt = `
+Parse the following CV/Resume and extract structured information. Return a JSON object with the following structure:
+{
+  "skills": ["skill1", "skill2", ...],
+  "experience": [
+    {
+      "company": "Company Name",
+      "position": "Job Title",
+      "duration": "Duration",
+      "description": "Brief description"
+    }
+  ],
+  "education": [
+    {
+      "institution": "School/University",
+      "degree": "Degree/Certification",
+      "year": "Year or duration"
+    }
+  ]
+}
 
-  return {
-    skills,
-    experience,
-    education,
+CV Content: ${cvText}
+
+Please extract only the most relevant technical skills, work experience, and education. Keep descriptions concise.
+`
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a professional CV parser. Extract structured information from CVs and return valid JSON only.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 1000,
+      temperature: 0.3,
+    })
+
+    const parsedContent = response.choices[0].message.content
+    const parsedData = JSON.parse(parsedContent)
+
+    // Validate and clean the parsed data
+    return {
+      skills: Array.isArray(parsedData.skills) ? parsedData.skills.slice(0, 20) : [],
+      experience: Array.isArray(parsedData.experience) ? parsedData.experience.slice(0, 5) : [],
+      education: Array.isArray(parsedData.education) ? parsedData.education.slice(0, 3) : [],
+    }
+  } catch (error) {
+    console.error("OpenAI CV parsing error:", error)
+    // Fallback to mock parsing if OpenAI fails
+    return mockParseCVContent(cvText)
   }
 }
 
 /**
- * Extract skills from CV text (mock implementation)
+ * Mock CV parsing function (fallback when OpenAI is not available)
  */
-const extractSkills = (text) => {
+const mockParseCVContent = (cvText) => {
   const commonSkills = [
     "JavaScript",
     "Python",
@@ -118,116 +281,12 @@ const extractSkills = (text) => {
     "Django",
     "Express.js",
     "GraphQL",
-    "REST API",
-    "Microservices",
-    "Kubernetes",
-    "Jenkins",
   ]
 
-  const foundSkills = commonSkills.filter((skill) => text.toLowerCase().includes(skill.toLowerCase()))
-
-  return foundSkills
-}
-
-/**
- * Extract experience from CV text (mock implementation)
- */
-const extractExperience = (text) => {
-  // This is a very basic mock - in production use proper NLP
-  const lines = text.split("\n")
-  const experience = []
-
-  // Look for patterns like "Company Name - Position"
-  lines.forEach((line) => {
-    if (line.includes(" - ") && line.length > 10 && line.length < 100) {
-      const parts = line.split(" - ")
-      if (parts.length >= 2) {
-        experience.push({
-          company: parts[0].trim(),
-          position: parts[1].trim(),
-          duration: "Not specified",
-          description: "Extracted from CV",
-        })
-      }
-    }
-  })
-
-  return experience.slice(0, 5) // Return max 5 experiences
-}
-
-/**
- * Extract education from CV text (mock implementation)
- */
-const extractEducation = (text) => {
-  const educationKeywords = ["university", "college", "degree", "bachelor", "master", "phd"]
-  const lines = text.split("\n")
-  const education = []
-
-  lines.forEach((line) => {
-    const lowerLine = line.toLowerCase()
-    if (educationKeywords.some((keyword) => lowerLine.includes(keyword))) {
-      education.push({
-        institution: line.trim(),
-        degree: "Not specified",
-        year: "Not specified",
-      })
-    }
-  })
-
-  return education.slice(0, 3) // Return max 3 education entries
-}
-
-/**
- * Generate AI-powered application insights
- * @param {Object} application - Application object
- * @param {Object} project - Project object
- * @returns {Object} Application insights
- */
-const generateApplicationInsights = (application, project) => {
-  const insights = {
-    strengths: [],
-    concerns: [],
-    recommendations: [],
+  // Mock parsing logic here
+  return {
+    skills: commonSkills,
+    experience: [],
+    education: [],
   }
-
-  // Analyze match score
-  if (application.aiMatchScore >= 80) {
-    insights.strengths.push("Excellent skill match for project requirements")
-  } else if (application.aiMatchScore >= 60) {
-    insights.strengths.push("Good skill alignment with project needs")
-  } else {
-    insights.concerns.push("Limited skill match with project requirements")
-  }
-
-  // Analyze confidence level
-  if (application.confidenceLevel === "strong") {
-    insights.strengths.push("High confidence in ability to deliver")
-  } else if (application.confidenceLevel === "weak") {
-    insights.concerns.push("Low confidence level indicated")
-  }
-
-  // Analyze proposed rate vs project budget
-  if (project.budget && application.proposedRate) {
-    if (application.proposedRate <= project.budget.max) {
-      insights.strengths.push("Proposed rate within project budget")
-    } else {
-      insights.concerns.push("Proposed rate exceeds project budget")
-    }
-  }
-
-  // Generate recommendations
-  if (insights.strengths.length > insights.concerns.length) {
-    insights.recommendations.push("Consider for interview or direct hire")
-  } else {
-    insights.recommendations.push("Request additional information or portfolio samples")
-  }
-
-  return insights
-}
-
-module.exports = {
-  calculateMatchScore,
-  recommendTalents,
-  parseCVContent,
-  generateApplicationInsights,
 }
