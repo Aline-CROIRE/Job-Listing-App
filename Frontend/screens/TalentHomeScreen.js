@@ -31,7 +31,7 @@ export default function HomeScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.navigate('BrowseJobs')}
+        onPress={() => navigation.navigate('Jobs')}
       >
         <Text style={styles.buttonText}>Browse Jobs</Text>
       </TouchableOpacity>
