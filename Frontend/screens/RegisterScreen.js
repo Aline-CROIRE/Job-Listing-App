@@ -8,6 +8,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 
@@ -22,37 +23,42 @@ export default function RegisterScreen({ navigation }) {
 
   const { register, loading } = useContext(UserContext);
 
-const handleRegister = async () => {
-  setErrorMsg('');
+  const handleRegister = async () => {
+    setErrorMsg('');
 
-  if (!name || !email || !password || !confirmPassword) {
-    setErrorMsg('Please fill in all fields');
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    setErrorMsg('Passwords do not match');
-    return;
-  }
-
-  try {
-    await register(name, email, password, 'talent');
-    navigation.navigate('Login');
-  } catch (error) {
-    const response = error.response?.data;
-
-    if (Array.isArray(response?.errors)) {
-      const messages = response.errors.map(err => err.msg).join('\n');
-      setErrorMsg(messages);
-    } else if (response?.message) {
-      setErrorMsg(response.message);
-    } else if (error.message) {
-      setErrorMsg(error.message);
-    } else {
-      setErrorMsg('Something went wrong. Please try again.');
+    if (!name || !email || !password || !confirmPassword) {
+      setErrorMsg('Please fill in all fields');
+      return;
     }
-  }
+
+    if (password !== confirmPassword) {
+      setErrorMsg('Passwords do not match');
+      return;
+    }
+
+    try {
+      const data = await register(name, email, password, 'talent');
+      if (data?.token) {
+        Alert.alert('Success', 'Registration completed. You can now log in.', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
+        ]);
+      }
+    } catch (error) {
+      const response = error?.response?.data;
+
+      if (Array.isArray(response?.errors)) {
+        const messages = response.errors.map(err => err.msg).join('\n');
+        setErrorMsg(messages);
+      } else if (response?.message) {
+        setErrorMsg(response.message);
+      } else if (error.message) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg('Something went wrong. Please try again.');
+      }
+    }
   };
+
   return (
     <View style={styles.container}>
       <Image source={require('../assets/jobnest-logo.png')} style={styles.logo} />
@@ -108,11 +114,13 @@ const handleRegister = async () => {
         </Pressable>
       </View>
 
-      {errorMsg ? (
-        <Text style={styles.errorMsg}>{errorMsg}</Text>
-      ) : null}
+      {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+      <TouchableOpacity
+        style={[styles.button, loading && { opacity: 0.7 }]}
+        onPress={handleRegister}
+        disabled={loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -203,5 +211,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 10,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
