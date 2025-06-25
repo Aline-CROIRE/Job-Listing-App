@@ -8,8 +8,7 @@ export const UserProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Make sure no spaces in the URL string!
-  const backendUrl = 'http://192.168.1.120:5000';
+  const backendUrl = 'http://192.168.167.248:5000';
 
   const login = async (email, password) => {
     setLoading(true);
@@ -19,7 +18,6 @@ export const UserProvider = ({ children }) => {
       setToken(res.data.token);
       return res.data;
     } catch (err) {
-      // You might want to throw a more descriptive error here or log
       throw err;
     } finally {
       setLoading(false);

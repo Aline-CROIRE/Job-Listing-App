@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 
@@ -29,10 +28,16 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      await login(email, password);
-      Alert.alert('Login Successful', 'Welcome back!', [
-        { text: 'Continue', onPress: () => navigation.replace('Home') }, // Replace with your main screen
-      ]);
+      const loggedInUserData = await login(email, password);
+      const userRole = loggedInUserData.user?.role;
+
+      if (userRole === 'employer') {
+        navigation.replace('EmployerDashboard');
+      } else if (userRole === 'admin') {
+        navigation.replace('AdminDashboard');
+      } else {
+        navigation.replace('TalentDashboard');
+      }
     } catch (error) {
       const response = error?.response?.data;
       if (Array.isArray(response?.errors)) {
@@ -50,13 +55,8 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../assets/jobnest-logo.png')}
-        style={styles.logo}
-      />
-      <Text style={styles.tagline}>
-        Welcome to Job Nest! Please login to continue.
-      </Text>
+      <Image source={require('../assets/jobnest-logo.png')} style={styles.logo} />
+      <Text style={styles.tagline}>Welcome to Job Nest! Please login to continue.</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -67,6 +67,7 @@ export default function LoginScreen({ navigation }) {
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
+          editable={!loading}
         />
       </View>
 
@@ -78,14 +79,15 @@ export default function LoginScreen({ navigation }) {
           secureTextEntry={hidePassword}
           value={password}
           onChangeText={setPassword}
+          editable={!loading}
         />
-        <Pressable onPress={() => setHidePassword(!hidePassword)}>
+        <Pressable onPress={() => setHidePassword(!hidePassword)} disabled={loading}>
           <Text style={styles.toggle}>{hidePassword ? 'Show' : 'Hide'}</Text>
         </Pressable>
       </View>
 
       <View style={styles.linkRow}>
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} disabled={loading}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
@@ -96,17 +98,14 @@ export default function LoginScreen({ navigation }) {
         style={[styles.button, loading && { opacity: 0.7 }]}
         onPress={handleLogin}
         disabled={loading}
+        activeOpacity={0.8}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
       </TouchableOpacity>
 
       <View style={styles.registerRow}>
         <Text style={styles.registerPrompt}>Don't have an account?</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
           <Text style={styles.registerLink}> Register</Text>
         </TouchableOpacity>
       </View>
