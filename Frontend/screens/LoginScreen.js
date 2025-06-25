@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,32 @@ import {
   Image,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
+import { UserContext } from '../context/UserContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [hidePassword, setHidePassword] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const { login, loading } = useContext(UserContext);
+
+  const handleLogin = async () => {
+    setErrorMsg('');
+    if (!email || !password) {
+      setErrorMsg('Please fill in all fields');
+      return;
+    }
+
+    try {
+      await login(email, password);
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Login failed';
+      setErrorMsg(msg);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -56,8 +76,16 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={() => {}}>
-        <Text style={styles.buttonText}>Login</Text>
+      {errorMsg ? (
+        <Text style={styles.errorMsg}>{errorMsg}</Text>
+      ) : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.registerRow}>
@@ -83,7 +111,7 @@ const styles = StyleSheet.create({
     height: 150,
     marginBottom: 20,
     resizeMode: 'contain',
-    borderRadius:10,
+    borderRadius: 10,
   },
   tagline: {
     fontSize: 18,
@@ -105,11 +133,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
-//   icon: {
-//     fontSize: 18,
-//     color: '#ccc',
-//     marginRight: 8,
-//   },
   toggle: {
     color: '#28a745',
     fontWeight: '600',
@@ -156,5 +179,11 @@ const styles = StyleSheet.create({
     color: '#28a745',
     fontWeight: '600',
     fontSize: 14,
+  },
+  errorMsg: {
+    color: '#ff4d4f',
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: '600',
   },
 });

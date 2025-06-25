@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -7,23 +7,55 @@ import {
   StyleSheet,
   Pressable,
   Image,
+  ActivityIndicator,
 } from 'react-native';
+import { UserContext } from '../context/UserContext';
 
 export default function RegisterScreen({ navigation }) {
-  const [fullName, setFullName] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [hidePassword, setHidePassword] = useState(true);
   const [hideConfirm, setHideConfirm] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
+  const { register, loading } = useContext(UserContext);
+
+const handleRegister = async () => {
+  setErrorMsg('');
+
+  if (!name || !email || !password || !confirmPassword) {
+    setErrorMsg('Please fill in all fields');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setErrorMsg('Passwords do not match');
+    return;
+  }
+
+  try {
+    await register(name, email, password, 'talent');
+    navigation.navigate('Login');
+  } catch (error) {
+    const response = error.response?.data;
+
+    if (Array.isArray(response?.errors)) {
+      const messages = response.errors.map(err => err.msg).join('\n');
+      setErrorMsg(messages);
+    } else if (response?.message) {
+      setErrorMsg(response.message);
+    } else if (error.message) {
+      setErrorMsg(error.message);
+    } else {
+      setErrorMsg('Something went wrong. Please try again.');
+    }
+  }
+  };
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../assets/jobnest-logo.png')}
-        style={styles.logo}
-      />
-
+      <Image source={require('../assets/jobnest-logo.png')} style={styles.logo} />
       <Text style={styles.header}>Create a Job Nest account</Text>
 
       <View style={styles.inputContainer}>
@@ -31,8 +63,8 @@ export default function RegisterScreen({ navigation }) {
           placeholder="Full Name"
           placeholderTextColor="#888"
           style={styles.input}
-          value={fullName}
-          onChangeText={setFullName}
+          value={name}
+          onChangeText={setName}
         />
       </View>
 
@@ -76,8 +108,16 @@ export default function RegisterScreen({ navigation }) {
         </Pressable>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={() => {}}>
-        <Text style={styles.buttonText}>Register</Text>
+      {errorMsg ? (
+        <Text style={styles.errorMsg}>{errorMsg}</Text>
+      ) : null}
+
+      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Register</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.loginRow}>
@@ -121,11 +161,6 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     width: '90%',
   },
-//   icon: {
-//     fontSize: 18,
-//     color: '#ccc',
-//     marginRight: 8,
-//   },
   toggle: {
     color: '#28a745',
     fontWeight: '600',
@@ -162,5 +197,11 @@ const styles = StyleSheet.create({
     color: '#28a745',
     fontWeight: '600',
     fontSize: 14,
+  },
+  errorMsg: {
+    color: '#ff4d4f',
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: '600',
   },
 });
