@@ -15,6 +15,7 @@ import TalentTabs from '../screens/TalentTabs';
 import EmployerTabs from '../screens/EmployerTabs';
 import EditEmployerProfileScreen from '../screens/EditEmployerProfileScreen';
 import EmployerSettings from '../screens/EmployerSettings';
+import PostProjectScreen from '../screens/PostProjectScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +31,7 @@ export default function AppNavigator() {
   }
 
   const getInitialScreen = () => {
-    if (!user) return 'Splash'; 
+    if (!user) return 'Splash';
     switch (user.role) {
       case 'talent':
         return 'TalentDashboard';
@@ -55,6 +56,8 @@ export default function AppNavigator() {
         <Stack.Screen name="EmployerDashboard" component={EmployerTabs} />
         <Stack.Screen name="EditEmployerProfile" component={EditEmployerProfileScreen} />
         <Stack.Screen name="Settings" component={EmployerSettings} />
+        <Stack.Screen name="PostProject" component={PostProjectScreen} />
+
 
 
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />

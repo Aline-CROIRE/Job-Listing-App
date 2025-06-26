@@ -6,6 +6,7 @@ import EmployerProfile from './EmployerProfileScreen';
 import PostJobScreen from './PostJobScreen';
 import PostedJobScreen from './PostedJobScreen';
 import EmployerSettings from './EmployerSettings';
+import EmployerViewScreen from './EmployerViewScreen';
 
 // import Applicants from './Applicants';
 
@@ -29,10 +30,10 @@ const EmployerTabs = () => {
                         case 'Dashboard':
                             iconName = focused ? 'grid' : 'grid-outline';
                             break;
-                        case 'PostJob':
+                        case 'Add':
                             iconName = focused ? 'add-circle' : 'add-circle-outline';
                             break;
-                        case 'PostedJobs':
+                        case 'View':
                             iconName = focused ? 'briefcase' : 'briefcase-outline';
                             break;
                         case 'Applicants':
@@ -54,8 +55,8 @@ const EmployerTabs = () => {
             })}
         >
             <Tab.Screen name="Dashboard" component={EmployerDashboard} />
-            <Tab.Screen name="PostJob" component={PostJobScreen} />
-            <Tab.Screen name="PostedJobs" component={PostedJobScreen} />
+            <Tab.Screen name="Add" component={PostJobScreen} />
+            <Tab.Screen name="View" component={EmployerViewScreen} />
             <Tab.Screen name="Profile" component={EmployerProfile} />
             {/* <Tab.Screen name="Applicants" component={Applicants} /> */}
         </Tab.Navigator>
