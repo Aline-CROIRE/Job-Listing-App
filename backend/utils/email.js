@@ -8,8 +8,12 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false, // 👈 ALLOWS self-signed certificates (development only!)
+    },
   });
 };
+
 
 /**
  * ✅ Send email verification link to user
@@ -84,15 +88,15 @@ const sendWelcomeEmail = async (email, userName, userRole) => {
 
   const roleCTA = userRole === "talent"
     ? {
-        heading: "You're now ready to apply to projects! 💼",
-        button: "Complete My Profile",
-        color: "#27ae60"
-      }
+      heading: "You're now ready to apply to projects! 💼",
+      button: "Complete My Profile",
+      color: "#27ae60"
+    }
     : {
-        heading: "Start posting projects & find talent! 🎯",
-        button: "Post My First Project",
-        color: "#2980b9"
-      };
+      heading: "Start posting projects & find talent! 🎯",
+      button: "Post My First Project",
+      color: "#2980b9"
+    };
 
   const mailOptions = {
     from: `"TalentLink AI" <${process.env.EMAIL_USER}>`,

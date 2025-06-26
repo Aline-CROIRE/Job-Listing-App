@@ -30,7 +30,7 @@ app.use(limiter)
 // CORS
 app.use(
   cors({
-    origin: "http://192.168.1.162:8081",
+    origin: "http://192.168.1.151:8081",
     credentials: true,
   })
 )

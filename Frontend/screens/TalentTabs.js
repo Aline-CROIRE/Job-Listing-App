@@ -30,7 +30,7 @@ export default function TalentTabs() {
             iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
-          } else if (route.name === 'Settings') {
+          } else if (route.name === 'TalentSettings') {
             iconName = focused ? 'settings' : 'settings-outline';
           }
 
@@ -41,7 +41,7 @@ export default function TalentTabs() {
       <Tab.Screen name="Jobs" component={JobScreen} />
       <Tab.Screen name="Alerts" component={Alerts} />
       <Tab.Screen name="Profile" component={TalentProfileScreen} />
-      <Tab.Screen name="Settings" component={Settings} />
+      <Tab.Screen name="TalentSettings" component={Settings} />
     </Tab.Navigator>
   );
 }
