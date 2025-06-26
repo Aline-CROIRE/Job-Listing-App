@@ -8,7 +8,7 @@ export const UserProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const backendUrl = 'http://192.168.167.248:5000';
+  const backendUrl = 'http:192.168.1.104//:5000';
 
   const login = async (email, password) => {
     setLoading(true);
