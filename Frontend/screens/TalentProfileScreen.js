@@ -14,7 +14,8 @@ import * as ImagePicker from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { UserContext } from '../context/UserContext';
 
-const backendUrl = 'http://192.168.1.151:5000';
+
+const backendUrl = 'http://192.168.1.104:5000';
 
 export default function TalentProfileScreen() {
   const { token } = useContext(UserContext);
