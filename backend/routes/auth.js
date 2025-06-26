@@ -101,7 +101,7 @@ router.post(
         console.error("Failed to send verification email:", emailError)
       }
 
-      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET||"joblistingapikimelialuxkimdhhhfhfk", {
         expiresIn: process.env.JWT_EXPIRE,
       })
 
@@ -211,78 +211,77 @@ router.post(
   },
 )
 
+
 /**
  * @swagger
  * /api/auth/verify-email:
- *   post:
- *     summary: Verify user email
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - token
- *             properties:
- *               token:
- *                 type: string
- *                 description: Email verification token
+ *   get:
+ *     summary: Verify user's email via token and activate account
+ *     description: Verifies the email by decoding the token, activating the user, and sending a welcome email.
+ *     tags:
+ *       - Auth
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: JWT token sent via email for verification
  *     responses:
  *       200:
- *         description: Email verified successfully
+ *         description: Email successfully verified and welcome email sent
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
  *       400:
- *         description: Invalid or expired token
- *       500:
- *         description: Server error
+ *         description: Invalid or expired token / email already verified
+ *       404:
+ *         description: User not found
  */
-router.post("/verify-email", async (req, res) => {
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).json({ message: "Token is missing" });
+  }
+
   try {
-    const { token } = req.body
+    // Decode token to get user ID
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
 
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Verification token is required",
-      })
+    // Find user in database
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Email already verified" });
     }
 
-    const user = await User.findOne({ emailVerificationToken: token })
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid verification token",
-      })
-    }
-
-    // Mark email as verified
-    user.isEmailVerified = true
-    user.emailVerificationToken = undefined
-    await user.save()
+    // Mark user as verified
+    user.isVerified = true;
+    await user.save();
 
     // Send welcome email
-    try {
-      const { sendWelcomeEmail } = require("../utils/email")
-      await sendWelcomeEmail(user.email, user.name, user.role)
-    } catch (emailError) {
-      console.error("Failed to send welcome email:", emailError)
-      // Don't fail verification if welcome email fails
-    }
+    await sendWelcomeEmail(user.email, user.name, user.role);
 
-    res.json({
-      success: true,
-      message: "Email verified successfully! Welcome to TalentLink AI.",
-    })
-  } catch (error) {
-    console.error("Email verification error:", error)
-    res.status(500).json({
-      success: false,
-      message: "Server error during email verification",
-    })
+    // Respond with confirmation HTML
+    return res.send(`
+      <html style="font-family: Arial, sans-serif;">
+        <body style="text-align: center; padding: 40px; background: #f0f0f0;">
+          <h2 style="color: #28a745;">🎉 Email Verified Successfully!</h2>
+          <p>Hi ${user.name}, your email has been verified.</p>
+          <p>You can now log in and start using TalentLink AI.</p>
+          <a href="${process.env.FRONTEND_URL}/login" style="display:inline-block;margin-top:20px;background:#28a745;color:#fff;padding:10px 20px;border-radius:5px;text-decoration:none;">🚀 Go to Login</a>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error("❌ Email verification failed:", err.message);
+    return res.status(400).json({ message: "Invalid or expired token" });
   }
-})
+});
 
 /**
  * @swagger
