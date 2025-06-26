@@ -1,3 +1,5 @@
+// screens/LoginScreen.js
+
 import React, { useState, useContext } from 'react';
 import {
   View,
@@ -8,6 +10,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Alert, // Import Alert for fallback errors
 } from 'react-native';
 import { UserContext } from '../context/UserContext';
 
@@ -17,10 +20,11 @@ export default function LoginScreen({ navigation }) {
   const [hidePassword, setHidePassword] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // The login function and loading state are coming from your context, which is great.
   const { login, loading } = useContext(UserContext);
 
   const handleLogin = async () => {
-    setErrorMsg('');
+    setErrorMsg(''); // Clear previous errors
 
     if (!email || !password) {
       setErrorMsg('Please fill in all fields');
@@ -28,17 +32,42 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
+      // The `login` function from your context should handle the API call
+      // and return the user data.
       const loggedInUserData = await login(email, password);
-      const userRole = loggedInUserData.user?.role;
+      
+      // We safely access the role from the returned data.
+      const userRole = loggedInUserData?.user?.role;
 
-      if (userRole === 'employer') {
-        navigation.replace('EmployerDashboard');
-      } else if (userRole === 'admin') {
-        navigation.replace('AdminDashboard');
-      } else {
-        navigation.replace('TalentDashboard');
+      // --- THIS IS THE CRITICAL FIX ---
+      // We determine the correct top-level screen name based on the user's role.
+      // These names MUST match the names defined in your AppNavigator.js.
+      
+      let nextScreen; // Use a variable to hold the destination screen name.
+
+      switch (userRole) {
+        case 'talent':
+          nextScreen = 'TalentApp'; // Use 'TalentApp' instead of 'TalentDashboard'
+          break;
+        case 'employer':
+          nextScreen = 'EmployerApp'; // Use 'EmployerApp' instead of 'EmployerDashboard'
+          break;
+        case 'admin':
+          nextScreen = 'AdminDashboard'; // This name was likely already correct
+          break;
+        default:
+          // This case handles if the user object or role is missing after login.
+          setErrorMsg("Login successful, but user role could not be determined.");
+          return;
       }
+
+      // Use `navigation.replace` to navigate to the correct "world" for the user
+      // and prevent them from using the back button to return to the login screen.
+      navigation.replace(nextScreen);
+
     } catch (error) {
+      // Your existing error handling is very good. This code extracts the
+      // error message from the API response.
       const response = error?.response?.data;
       if (Array.isArray(response?.errors)) {
         const messages = response.errors.map(err => err.msg).join('\n');
@@ -48,11 +77,13 @@ export default function LoginScreen({ navigation }) {
       } else if (error.message) {
         setErrorMsg(error.message);
       } else {
-        setErrorMsg('Login failed. Please try again.');
+        setErrorMsg('Login failed. An unknown error occurred.');
       }
     }
+    // The loading state is handled by the context, so no need for a `finally` block here.
   };
-
+  
+  // Your JSX is already well-styled and functional. No changes needed here.
   return (
     <View style={styles.container}>
       <Image source={require('../assets/jobnest-logo.png')} style={styles.logo} />
@@ -113,6 +144,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
+// Your styles are great. No changes needed.
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -35,7 +35,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-dom": "19.0.0",
     "react-native-web": "^0.20.0",
-    "@expo/metro-runtime": "~5.0.4"
+    "@expo/metro-runtime": "~5.0.4",
+    "expo-image-picker": "~16.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
