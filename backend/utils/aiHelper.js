@@ -6,7 +6,6 @@
 const axios = require("axios");
 
 // Initialize Groq client with API key from env
-// No changes needed here, this is correct.
 const groq = axios.create({
   baseURL: "https://api.groq.com/openai/v1",
   headers: {
@@ -17,9 +16,6 @@ const groq = axios.create({
 
 /**
  * Calculate match score between project requirements and talent skills
- * @param {Array} projectSkills - Required skills for the project
- * @param {Array} talentSkills - Talent's skills
- * @returns {Number} Match score between 0-100
  */
 const calculateMatchScore = (projectSkills, talentSkills) => {
   if (!projectSkills || !talentSkills || projectSkills.length === 0 || talentSkills.length === 0) return 0;
@@ -49,9 +45,6 @@ const calculateMatchScore = (projectSkills, talentSkills) => {
 
 /**
  * Calculate similarity between two strings using Levenshtein distance
- * @param {String} str1
- * @param {String} str2
- * @returns {Number} similarity score (0 to 1)
  */
 const getSimilarityScore = (str1, str2) => {
   const longer = str1.length > str2.length ? str1 : str2;
@@ -71,9 +64,9 @@ const getEditDistance = (str1, str2) => {
   for (let i = 1; i <= str2.length; i++) {
     for (let j = 1; j <= str1.length; j++) {
       matrix[i][j] =
-        str2.charAt(i - 1) === str1.charAt(j - 1) ?
-        matrix[i - 1][j - 1] :
-        Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+        str2.charAt(i - 1) === str1.charAt(j - 1)
+          ? matrix[i - 1][j - 1]
+          : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
     }
   }
   return matrix[str2.length][str1.length];
@@ -84,10 +77,7 @@ const getEditDistance = (str1, str2) => {
  */
 const calculateRateCompatibility = (projectBudget, talentRate) => {
   if (!projectBudget || !talentRate) return 0;
-  const {
-    min,
-    max
-  } = projectBudget;
+  const { min, max } = projectBudget;
   if (!min && !max) return 0;
   if (talentRate <= (max || min)) {
     return talentRate >= (min || 0) ? 10 : 5;
@@ -97,9 +87,6 @@ const calculateRateCompatibility = (projectBudget, talentRate) => {
 
 /**
  * Recommend talents for a project based on skills and availability
- * @param {Object} project - Project with skillsRequired & budget
- * @param {Array} talents - Array of talent user objects
- * @returns {Array} Sorted recommendations with scores
  */
 const recommendTalents = (project, talents) => {
   if (!project.skillsRequired || !talents || talents.length === 0) return [];
@@ -120,9 +107,9 @@ const recommendTalents = (project, talents) => {
       const matchedSkills = project.skillsRequired.filter((skill) =>
         talent.talentProfile.skills.some(
           (ts) =>
-          ts.toLowerCase().includes(skill.toLowerCase()) ||
-          skill.toLowerCase().includes(ts.toLowerCase()) ||
-          getSimilarityScore(skill.toLowerCase(), ts.toLowerCase()) > 0.7
+            ts.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(ts.toLowerCase()) ||
+            getSimilarityScore(skill.toLowerCase(), ts.toLowerCase()) > 0.7
         )
       );
 
@@ -153,46 +140,36 @@ const recommendTalents = (project, talents) => {
     .slice(0, 15);
 };
 
-// --- START OF CORRECTED SECTION ---
+// --- START OF UPDATED PARSING SECTION ---
 
 /**
  * Parse CV content using Groq API
- * Falls back to text parsing on failure
+ * Falls back to simplified parsing on failure
  */
 const parseCVContent = async (cvText) => {
   try {
-    // Sanitize and truncate the input to prevent it from being too long
-    // A 32k token model is large, but not infinite. Let's cap it at a safe limit.
-    // 1 char is roughly 1 token, so 28000 chars is a safe upper bound.
+    // Truncate input to ~28,000 chars to stay within token limits
     const sanitizedCvText = cvText.substring(0, 28000);
     return await parseWithGroq(sanitizedCvText);
   } catch (err) {
-    // The improved error logging in parseWithGroq will give us a better clue now
-    console.error("Groq parsing failed, falling back to text parsing. Error details logged above.");
-    return parseWithTextAnalysis(cvText); // Fallback still uses original text
+    console.error("Groq parsing failed, falling back to simplified parsing. Error details logged above.");
+    return parseWithTextAnalysis(cvText);
   }
 };
 
 /**
- * Parse CV with Groq Mixtral Model using JSON mode for robust parsing.
- */
-/**
- * Parse CV with Groq Llama3 Model using JSON mode for robust parsing.
+ * Parse CV with Groq Llama3 model in JSON mode
  */
 const parseWithGroq = async (cvText) => {
   const prompt = `
 Analyze the following CV content and extract the information into a structured JSON object.
-The JSON object must have the following keys: "skills", "experience", and "education".
+The JSON object must have these keys: "skills", "experience", and "education".
 
-- "skills": An array of strings.
-- "experience": An array of objects. Each object must have these keys:
-  - "company": A string.
-  - "position": A string.
-  - "duration": A string.
-  - "description": A SINGLE string summarizing the role. If the CV uses bullet points, COMBINE them into one paragraph.
-- "education": An array of objects. Each object must have "institution", "degree", and "year".
+- "skills": array of strings.
+- "experience": array of objects with keys: "company", "position", "duration", "description".
+- "education": array of objects with keys: "institution", "degree", "year".
 
-If a section is not found, return an empty array for that key.
+If any section is missing, return empty arrays.
 
 CV Text:
 ---
@@ -201,17 +178,18 @@ ${cvText}
 `;
 
   const payload = {
-    model: "llama3-70b-8192", 
-    messages: [{
-      role: "system",
-      content: "You are a highly accurate CV parsing assistant. You must respond with a valid JSON object and nothing else."
-    }, {
-      role: "user",
-      content: prompt
-    }, ],
-    response_format: {
-      type: "json_object"
-    },
+    model: "llama3-70b-8192",
+    messages: [
+      {
+        role: "system",
+        content: "You are a highly accurate CV parsing assistant. Respond ONLY with a valid JSON object.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    response_format: { type: "json_object" },
     temperature: 0.1,
     max_tokens: 2048,
   };
@@ -236,19 +214,18 @@ ${cvText}
 };
 
 /**
- * Fallback text-based CV parsing (simplified)
+ * Fallback simplified CV parser
  */
 const parseWithTextAnalysis = (cvText) => {
-  // This fallback remains the same, but it's now used more reliably.
-  console.log("Executing simplified text-based parsing as a fallback.");
+  console.log("Fallback simplified text-based CV parsing.");
   return {
-    skills: ["Javascript", "React", "Node.js"], // Example data
+    skills: ["Javascript", "React", "Node.js"],
     experience: [],
     education: [],
   };
 };
 
-// --- END OF CORRECTED SECTION ---
+// --- END OF UPDATED PARSING SECTION ---
 
 module.exports = {
   parseCVContent,
