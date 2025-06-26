@@ -21,7 +21,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { UserContext } from '../context/UserContext';
 import ProfileSkeleton from './ProfileSkeleton'; // Make sure this path is correct
 
-const backendUrl = 'http://192.168.1.104:5000';
+const backendUrl = 'http://192.168.1.151:5000';
 
 export default function TalentProfileScreen({ navigation }) {
   const { token } = useContext(UserContext);
