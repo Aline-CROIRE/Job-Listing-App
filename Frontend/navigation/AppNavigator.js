@@ -5,7 +5,6 @@ import { ActivityIndicator, View } from 'react-native';
 import { UserContext } from '../context/UserContext';
 
 import SplashScreen from '../screens/SplashScreen';
-import UserTypeSelection from '../screens/UserTypeSelection';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
@@ -47,7 +46,6 @@ export default function AppNavigator() {
       <Stack.Navigator initialRouteName={getInitialScreen()} screenOptions={{ headerShown: false }}>
 
         <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="UserTypeSelection" component={UserTypeSelection} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
 
