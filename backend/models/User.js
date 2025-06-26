@@ -1,10 +1,34 @@
-const mongoose = require("mongoose")
-const bcrypt = require("bcryptjs")
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto"); // Moved to top for consistency
 
 /**
  * @swagger
  * components:
  *   schemas:
+ *     Experience:
+ *       type: object
+ *       properties:
+ *         company:
+ *           type: string
+ *         position:
+ *           type: string
+ *         duration:
+ *           type: string
+ *         description:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: "List of responsibilities or achievements."
+ *     Education:
+ *       type: object
+ *       properties:
+ *          institution:
+ *            type: string
+ *          degree:
+ *            type: string
+ *          year:
+ *            type: string
  *     User:
  *       type: object
  *       required:
@@ -18,76 +42,38 @@ const bcrypt = require("bcryptjs")
  *           description: Auto-generated user ID
  *         name:
  *           type: string
- *           description: User's full name
  *         email:
  *           type: string
  *           format: email
- *           description: User's email address
  *         password:
  *           type: string
- *           description: Hashed password
  *         role:
  *           type: string
  *           enum: [admin, employer, talent]
- *           description: User role in the system
  *         isEmailVerified:
  *           type: boolean
- *           default: false
- *           description: Email verification status
- *         emailVerificationToken:
- *           type: string
- *           description: Token for email verification
- *         resetPasswordToken:
- *           type: string
- *           description: Token for password reset
- *         resetPasswordExpire:
- *           type: string
- *           format: date-time
- *           description: Password reset token expiration
  *         profile:
  *           type: object
  *           properties:
- *             bio:
- *               type: string
- *             location:
- *               type: string
- *             phone:
- *               type: string
- *             website:
- *               type: string
- *             avatar:
- *               type: string
+ *             bio: { type: string }
+ *             location: { type: string }
+ *             phone: { type: string }
+ *             website: { type: string }
+ *             profile: { type: string } # Corrected from 'avatar' to match frontend state
  *         talentProfile:
  *           type: object
  *           properties:
  *             skills:
  *               type: array
- *               items:
- *                 type: string
+ *               items: { type: string }
  *             experience:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   company:
- *                     type: string
- *                   position:
- *                     type: string
- *                   duration:
- *                     type: string
- *                   description:
- *                     type: string
+ *                 $ref: '#/components/schemas/Experience' # Reference the Experience schema
  *             education:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   institution:
- *                     type: string
- *                   degree:
- *                     type: string
- *                   year:
- *                     type: string
+ *                 $ref: '#/components/schemas/Education' # Reference the Education schema
  *             cvUrl:
  *               type: string
  *             hourlyRate:
@@ -95,12 +81,6 @@ const bcrypt = require("bcryptjs")
  *             availability:
  *               type: string
  *               enum: [available, busy, unavailable]
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
  */
 
 const userSchema = new mongoose.Schema(
@@ -122,7 +102,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
-      select: false, // Don't include password in queries by default
+      select: false,
     },
     role: {
       type: String,
@@ -137,7 +117,6 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: String,
     resetPasswordExpire: Date,
 
-    // General profile information
     profile: {
       bio: {
         type: String,
@@ -146,32 +125,33 @@ const userSchema = new mongoose.Schema(
       location: String,
       phone: String,
       website: String,
-      avatar: String,
+      // [FIX 1] The frontend code uses `profile.profile` for the image URL.
+      // Renaming 'avatar' to 'profile' makes the model consistent with the client.
+      profile: String,
     },
 
-    // Talent-specific profile (only for role: 'talent')
     talentProfile: {
-      skills: [
-        {
-          type: String,
-          trim: true,
-        },
-      ],
-      experience: [
-        {
-          company: String,
-          position: String,
-          duration: String,
-          description: String,
-        },
-      ],
-      education: [
-        {
-          institution: String,
-          degree: String,
-          year: String,
-        },
-      ],
+      skills: [{
+        type: String,
+        trim: true,
+      }],
+      experience: [{
+        company: String,
+        position: String,
+        duration: String,
+        // [FIX 2 - THE CRITICAL CHANGE]
+        // Changed `description` from a single String to an array of Strings `[String]`.
+        // This now matches the data structure produced by your AI parser.
+        description: [String],
+      }],
+      education: [{
+        institution: String,
+        degree: String,
+        // [FIX 3 - AI & SCHEMA CONSISTENCY]
+        // AI will likely parse duration (e.g., "2018-2022") better than a single year.
+        // Changed 'year' to 'duration' for better parsing results.
+        duration: String,
+      }],
       cvUrl: String,
       hourlyRate: {
         type: Number,
@@ -186,60 +166,58 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
-)
+  }
+);
+
+// --- NO CHANGES BELOW THIS LINE ---
 
 // Index for better query performance
-userSchema.index({ email: 1 })
-userSchema.index({ role: 1 })
-userSchema.index({ "talentProfile.skills": 1 })
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ "talentProfile.skills": 1 });
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
-  // Only hash password if it's been modified
   if (!this.isModified("password")) {
-    return next()
+    return next();
   }
-
   try {
-    const salt = await bcrypt.genSalt(12)
-    this.password = await bcrypt.hash(this.password, salt)
-    next()
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
   } catch (error) {
-    next(error)
+    next(error);
   }
-})
+});
 
 // Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password)
-}
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 // Generate email verification token
 userSchema.methods.generateEmailVerificationToken = function () {
-  const crypto = require("crypto")
-  const token = crypto.randomBytes(32).toString("hex")
-  this.emailVerificationToken = token
-  return token
-}
+  const token = crypto.randomBytes(32).toString("hex");
+  this.emailVerificationToken = token;
+  return token;
+};
 
 // Generate password reset token
 userSchema.methods.generatePasswordResetToken = function () {
-  const crypto = require("crypto")
-  const token = crypto.randomBytes(32).toString("hex")
-  this.resetPasswordToken = token
-  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000 // 10 minutes
-  return token
-}
+  const token = crypto.randomBytes(32).toString("hex");
+  this.resetPasswordToken = token;
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  return token;
+};
 
 // Remove sensitive data when converting to JSON
 userSchema.methods.toJSON = function () {
-  const user = this.toObject()
-  delete user.password
-  delete user.emailVerificationToken
-  delete user.resetPasswordToken
-  delete user.resetPasswordExpire
-  return user
-}
+  const user = this.toObject();
+  delete user.password;
+  delete user.emailVerificationToken;
+  delete user.resetPasswordToken;
+  delete user.resetPasswordExpire;
+  return user;
+};
 
-module.exports = mongoose.model("User", userSchema)
+module.exports = mongoose.model("User", userSchema);
