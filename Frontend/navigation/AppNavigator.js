@@ -13,6 +13,8 @@ import EmployerDashboard from '../screens/EmployerDashboard';
 import AdminDashboard from '../screens/AdminDashboard';
 import TalentTabs from '../screens/TalentTabs';
 import EmployerTabs from '../screens/EmployerTabs';
+import EditEmployerProfileScreen from '../screens/EditEmployerProfileScreen';
+import EmployerSettings from '../screens/EmployerSettings';
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +53,10 @@ export default function AppNavigator() {
 
         <Stack.Screen name="TalentDashboard" component={TalentTabs} />
         <Stack.Screen name="EmployerDashboard" component={EmployerTabs} />
+        <Stack.Screen name="EditEmployerProfile" component={EditEmployerProfileScreen} />
+        <Stack.Screen name="Settings" component={EmployerSettings} />
+
+
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,61 +1,88 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import { UserContext } from '../context/UserContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function EmployerSettings() {
-  const { logout, user } = useContext(UserContext);
+  const { user } = useContext(UserContext);
 
-  const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: logout },
-    ]);
-  };
+  const SettingItem = ({ icon, label, onPress }) => (
+    <TouchableOpacity style={styles.item} onPress={onPress}>
+      <View style={styles.itemLeft}>
+        <Icon name={icon} size={20} color="#28a745" />
+        <Text style={styles.itemText}>{label}</Text>
+      </View>
+      <Icon name="chevron-forward" size={20} color="#888" />
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Settings</Text>
-      <Text style={styles.subheading}>Logged in as: {user?.email}</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Settings</Text>
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Icon name="log-out-outline" size={22} color="#e74c3c" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.section}>
+        <SettingItem icon="globe-outline" label="Language" onPress={() => {}} />
+        <SettingItem icon="lock-closed-outline" label="Privacy Policy" onPress={() => {}} />
+        <SettingItem icon="document-text-outline" label="Terms of Services" onPress={() => {}} />
+        <SettingItem icon="information-circle-outline" label="About App" onPress={() => {}} />
+      </View>
+
+      <View style={styles.section}>
+        <SettingItem icon="star-outline" label="Rate Us" onPress={() => {}} />
+        <SettingItem icon="share-social-outline" label="Share with Friends" onPress={() => {}} />
+        <SettingItem icon="apps-outline" label="More Apps" onPress={() => {}} />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    padding: 20,
     backgroundColor: '#000',
-    padding: 25,
+    flexGrow: 1,
   },
-  heading: {
+  header: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#28a745',
-    marginBottom: 10,
+    marginBottom: 50,
+    marginTop:200,
+    textAlign:'center',
   },
-  subheading: {
+  subheader: {
     color: '#aaa',
-    marginBottom: 30,
+    marginBottom: 25,
   },
-  logoutBtn: {
+  section: {
+    backgroundColor: '#111',
+    borderRadius: 12,
+    marginBottom: 20,
+    paddingVertical: 8,
+    marginTop:10,
+  },
+  item: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  itemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111',
-    padding: 15,
-    borderRadius: 8,
-    borderColor: '#e74c3c',
-    borderWidth: 1,
-    marginTop: 20,
   },
-  logoutText: {
-    color: '#e74c3c',
-    fontWeight: 'bold',
-    marginLeft: 10,
+  itemText: {
+    marginLeft: 12,
     fontSize: 16,
+    color: '#fff',
   },
 });
