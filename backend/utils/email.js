@@ -13,6 +13,7 @@ const createTransporter = () => {
   });
 };
 
+
 /**
  * ✅ Send email verification link
  * Now links to the BACKEND directly to verify token automatically

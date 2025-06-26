@@ -32,7 +32,7 @@ app.use(limiter)
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://192.168.1.104:8081",
+    origin: "http://192.168.1.162:8081",
     credentials: true,
   }),
 )

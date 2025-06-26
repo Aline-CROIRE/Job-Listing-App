@@ -56,7 +56,6 @@ const EmployerTabs = () => {
             <Tab.Screen name="Dashboard" component={EmployerDashboard} />
             <Tab.Screen name="PostJob" component={PostJobScreen} />
             <Tab.Screen name="PostedJobs" component={PostedJobScreen} />
-            <Tab.Screen name="Settings" component={EmployerSettings} />
             <Tab.Screen name="Profile" component={EmployerProfile} />
             {/* <Tab.Screen name="Applicants" component={Applicants} /> */}
         </Tab.Navigator>
