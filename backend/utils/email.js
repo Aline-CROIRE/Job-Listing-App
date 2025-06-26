@@ -1,6 +1,5 @@
 const nodemailer = require("nodemailer");
 
-// ✅ Create email transporter for Gmail
 const createTransporter = () => {
   return nodemailer.createTransport({
     service: "gmail",
@@ -8,15 +7,19 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false, // Allow self-signed certificates (can be removed in production)
+    },
   });
 };
 
 /**
- * ✅ Send email verification link to user
+ * ✅ Send email verification link
+ * Now links to the BACKEND directly to verify token automatically
  */
 const sendVerificationEmail = async (email, token) => {
   const transporter = createTransporter();
-  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  const verificationUrl = `${process.env.BACKEND_URL||"http://192.168.1.120:5000"}/api/auth/verify-email?token=${token}`;
 
   const mailOptions = {
     from: `"TalentLink AI" <${process.env.EMAIL_USER}>`,
@@ -76,7 +79,7 @@ const sendPasswordResetEmail = async (email, token) => {
 };
 
 /**
- * ✅ Send welcome email after email verification
+ * ✅ Send welcome email after successful verification
  */
 const sendWelcomeEmail = async (email, userName, userRole) => {
   const transporter = createTransporter();
@@ -86,12 +89,12 @@ const sendWelcomeEmail = async (email, userName, userRole) => {
     ? {
         heading: "You're now ready to apply to projects! 💼",
         button: "Complete My Profile",
-        color: "#27ae60"
+        color: "#27ae60",
       }
     : {
         heading: "Start posting projects & find talent! 🎯",
         button: "Post My First Project",
-        color: "#2980b9"
+        color: "#2980b9",
       };
 
   const mailOptions = {
