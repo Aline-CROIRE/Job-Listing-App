@@ -1,205 +1,186 @@
 import React, { useState, useContext } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
+    ScrollView,
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    Alert,
 } from 'react-native';
-import axios from 'axios';
 import { UserContext } from '../context/UserContext';
+import axios from 'axios';
+import { useNavigation } from '@react-navigation/native';
 
 const backendUrl = 'http://192.168.1.151:5000';
 
-export default function PostJobScreen({ navigation }) {
-  const { token } = useContext(UserContext);
-  const [step, setStep] = useState(null);
-  const [form, setForm] = useState({
+const initialState = {
     title: '',
     description: '',
     jobType: '',
     workType: '',
     skillsRequired: '',
-    salaryMin: '',
-    salaryMax: '',
-    salaryCurrency: 'USD',
-    salaryPeriod: 'yearly',
-    locationCity: '',
-    locationState: '',
-    locationCountry: '',
+    salary: { min: '', max: '', currency: '', period: '' },
+    location: { city: '', country: '' },
     requirements: '',
     responsibilities: '',
     benefits: '',
     experienceLevel: '',
     applicationDeadline: '',
-    companyName: '',
-    companySize: '',
-    companyIndustry: '',
-  });
+    company: { name: '', size: '', industry: '' },
+};
 
-  const handleSubmit = async () => {
-    try {
-      const payload = {
-        title: form.title,
-        description: form.description,
-        jobType: form.jobType,
-        workType: form.workType,
-        skillsRequired: form.skillsRequired.split(',').map(s => s.trim()),
-        salary: {
-          min: parseFloat(form.salaryMin),
-          max: parseFloat(form.salaryMax),
-          currency: form.salaryCurrency,
-          period: form.salaryPeriod,
-        },
-        location: {
-          city: form.locationCity,
-          state: form.locationState,
-          country: form.locationCountry,
-        },
-        requirements: form.requirements.split(',').map(s => s.trim()),
-        responsibilities: form.responsibilities.split(',').map(s => s.trim()),
-        benefits: form.benefits.split(',').map(s => s.trim()),
-        experienceLevel: form.experienceLevel,
-        applicationDeadline: form.applicationDeadline,
-        company: {
-          name: form.companyName,
-          size: form.companySize,
-          industry: form.companyIndustry,
-        },
-      };
+export default function PostJobScreen() {
+    const navigation = useNavigation();
+    const { token } = useContext(UserContext);
+    const [showJobForm, setShowJobForm] = useState(false);
+    const [jobData, setJobData] = useState(initialState);
 
-      await axios.post(`${backendUrl}/api/jobs`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const handleChange = (field, value) => {
+        setJobData({ ...jobData, [field]: value });
+    };
 
-      Alert.alert('Success', 'Job posted successfully');
-      navigation.goBack();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to post job');
-    }
-  };
+    const handleNestedChange = (section, field, value) => {
+        setJobData({ ...jobData, [section]: { ...jobData[section], [field]: value } });
+    };
 
-  if (!step) {
-    return (
-      <View style={styles.choiceContainer}>
-        <Text style={styles.title}>What would you like to post?</Text>
-        <TouchableOpacity
-          style={styles.choiceButton}
-          onPress={() => setStep('job')}
-        >
-          <Text style={styles.choiceText}>Post a Job</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.choiceButton, { backgroundColor: '#666' }]}
-          disabled
-        >
-          <Text style={styles.choiceText}>Post a Project (coming soon)</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+    const handleJobSubmit = async () => {
+        try {
+            const payload = {
+                ...jobData,
+                skillsRequired: jobData.skillsRequired.split(',').map(skill => skill.trim()),
+                requirements: jobData.requirements.split(',').map(item => item.trim()),
+                responsibilities: jobData.responsibilities.split(',').map(item => item.trim()),
+                benefits: jobData.benefits.split(',').map(item => item.trim()),
+            };
 
-  return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.heading}>Post a Job</Text>
-      {Object.entries({
-        title: 'Job Title',
-        description: 'Description',
-        jobType: 'Job Type (e.g., full-time)',
-        workType: 'Work Type (e.g., remote)',
-        skillsRequired: 'Skills (comma-separated)',
-        salaryMin: 'Min Salary',
-        salaryMax: 'Max Salary',
-        locationCity: 'City',
-        locationState: 'State',
-        locationCountry: 'Country',
-        requirements: 'Requirements (comma-separated)',
-        responsibilities: 'Responsibilities (comma-separated)',
-        benefits: 'Benefits (comma-separated)',
-        experienceLevel: 'Experience Level',
-        applicationDeadline: 'Deadline (YYYY-MM-DD)',
-        companyName: 'Company Name',
-        companySize: 'Company Size',
-        companyIndustry: 'Company Industry',
-      }).map(([key, placeholder]) => (
+            await axios.post(`${backendUrl}/api/jobs`, payload, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            Alert.alert('Success', 'Job posted successfully!');
+            setJobData(initialState);
+            setShowJobForm(false);
+        } catch (err) {
+            console.log(err.response?.data || err.message);
+            Alert.alert('Error', err.response?.data?.message || 'Failed to post job.');
+        }
+    };
+
+    const renderInput = (placeholder, value, onChange, multiline = false) => (
         <TextInput
-          key={key}
-          placeholder={placeholder}
-          placeholderTextColor="#aaa"
-          style={styles.input}
-          value={form[key]}
-          onChangeText={text => setForm(prev => ({ ...prev, [key]: text }))}
+            style={styles.input}
+            placeholder={placeholder}
+            placeholderTextColor="#777"
+            value={value}
+            onChangeText={onChange}
+            multiline={multiline}
         />
-      ))}
+    );
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Submit Job</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+    return (
+        <ScrollView contentContainerStyle={styles.container}>
+            {!showJobForm ? (
+                <View style={styles.choiceContainer}>
+                    <Text style={styles.choiceTitle}>What would you like to post?</Text>
+                    <TouchableOpacity style={styles.choiceBtn} onPress={() => setShowJobForm(true)}>
+                        <Text style={styles.choiceText}>Post a Job</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.choiceBtn}
+                        onPress={() => navigation.navigate('PostProject')}
+                    >
+                        <Text style={styles.choiceText}>Post a Project</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <>
+                    <Text style={styles.heading}>Post a New Job</Text>
+
+                    {renderInput('Job Title', jobData.title, text => handleChange('title', text))}
+                    {renderInput('Description', jobData.description, text => handleChange('description', text), true)}
+                    {renderInput('Job Type (full-time, part-time, contract)', jobData.jobType, text => handleChange('jobType', text.trim().toLowerCase()))}
+                    {renderInput('Work Type (remote, on-site, hybrid)', jobData.workType, text => handleChange('workType', text.trim().toLowerCase()))}
+                    {renderInput('Skills (comma separated)', jobData.skillsRequired, text => handleChange('skillsRequired', text))}
+                    {renderInput('Salary Min', jobData.salary.min, text => handleNestedChange('salary', 'min', text))}
+                    {renderInput('Salary Max', jobData.salary.max, text => handleNestedChange('salary', 'max', text))}
+                    {renderInput('Salary Currency (e.g. USD)', jobData.salary.currency, text => handleNestedChange('salary', 'currency', text))}
+                    {renderInput('Salary Period (yearly, monthly)', jobData.salary.period, text => handleNestedChange('salary', 'period', text))}
+                    {renderInput('City', jobData.location.city, text => handleNestedChange('location', 'city', text))}
+                    {renderInput('Country', jobData.location.country, text => handleNestedChange('location', 'country', text))}
+                    {renderInput('Requirements (comma separated)', jobData.requirements, text => handleChange('requirements', text))}
+                    {renderInput('Responsibilities (comma separated)', jobData.responsibilities, text => handleChange('responsibilities', text))}
+                    {renderInput('Benefits (comma separated)', jobData.benefits, text => handleChange('benefits', text))}
+                    {renderInput('Experience Level (entry, mid, senior)', jobData.experienceLevel, text => handleChange('experienceLevel', text.trim().toLowerCase()))}
+                    {renderInput('Application Deadline (YYYY-MM-DD)', jobData.applicationDeadline, text => handleChange('applicationDeadline', text))}
+                    {renderInput('Company Name', jobData.company.name, text => handleNestedChange('company', 'name', text))}
+                    {renderInput('Company Size (small, medium, large)', jobData.company.size, text => handleNestedChange('company', 'size', text))}
+                    {renderInput('Company Industry', jobData.company.industry, text => handleNestedChange('company', 'industry', text))}
+
+                    <TouchableOpacity style={styles.submitBtn} onPress={handleJobSubmit}>
+                        <Text style={styles.submitText}>Submit Job</Text>
+                    </TouchableOpacity>
+                </>
+            )}
+        </ScrollView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#000',
-    padding: 20,
-    flex: 1,
-  },
-  heading: {
-    fontSize: 22,
-    color: '#28a745',
-    marginBottom: 30,
-    fontWeight: 'bold',
-    textAlign:'center',
-    marginTop: 50,
-},
-  input: {
-    backgroundColor: '#111',
-    color: '#fff',
-    padding: 12,
-    marginBottom: 20,
-    borderRadius: 6,
-    borderColor: '#333',
-    borderWidth: 1,
-  },
-  submitButton: {
-    backgroundColor: '#28a745',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom:100,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  choiceContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    padding: 20,
-  },
-  choiceButton: {
-    backgroundColor: '#28a745',
-    padding: 20,
-    borderRadius: 10,
-    marginVertical: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  choiceText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  title: {
-    color: '#fff',
-    fontSize: 20,
-    marginBottom: 20,
-  },
+    container: {
+        backgroundColor: '#000',
+        padding: 20,
+        flexGrow: 1,
+    },
+    heading: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#28a745',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    input: {
+        backgroundColor: '#111',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        color: '#fff',
+    },
+    submitBtn: {
+        backgroundColor: '#28a745',
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 40,
+    },
+    submitText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    choiceContainer: {
+        alignItems: 'center',
+        marginTop: 100,
+    },
+    choiceTitle: {
+        fontSize: 20,
+        color: '#fff',
+        marginBottom: 20,
+    },
+    choiceBtn: {
+        backgroundColor: '#111',
+        padding: 18,
+        borderRadius: 10,
+        marginBottom: 15,
+        width: '100%',
+        alignItems: 'center',
+        borderColor: '#28a745',
+        borderWidth: 1,
+    },
+    choiceText: {
+        color: '#28a745',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
 });
