@@ -14,7 +14,7 @@ import * as ImagePicker from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { UserContext } from '../context/UserContext';
 
-const backendUrl = 'http://192.168.167.248:5000';
+const backendUrl = 'http://192.168.1.151:5000';
 
 export default function TalentProfileScreen() {
   const { token } = useContext(UserContext);
@@ -64,8 +64,8 @@ export default function TalentProfileScreen() {
     });
 
     try {
-      const res = await axios.put(
-        `${backendUrl}/api/users/upload-profile-image`,
+      const res = await axios.post(
+        `${backendUrl}/api/upload/avatar`,
         formData,
         {
           headers: {
@@ -116,7 +116,7 @@ export default function TalentProfileScreen() {
           type: mimeType,
         });
 
-        await axios.put(`${backendUrl}/api/users/upload-cv`, formData, {
+        await axios.postr(`${backendUrl}/api/upload/cv`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
