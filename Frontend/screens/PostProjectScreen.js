@@ -11,7 +11,7 @@ import {
 import axios from 'axios';
 import { UserContext } from '../context/UserContext';
 
-const backendUrl = 'http://192.168.1.151:5000';
+const backendUrl = 'http://192.168.1.104:5000';
 
 const initialProject = {
     title: '',
