@@ -68,7 +68,7 @@ export default function TalentTabs() {
             iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'ProfileStack') { // <-- [FIX] Match the new route name
             iconName = focused ? 'person-circle' : 'person-circle-outline';
-          } else if (route.name === 'TalentSettings') {
+          } else if (route.name === 'Settings') {
             iconName = focused ? 'settings' : 'settings-outline';
           }
 
@@ -89,7 +89,7 @@ export default function TalentTabs() {
       />
       {/* ----------------------------- */}
 
-      <Tab.Screen name="TalentSettings" component={Settings} />
+      <Tab.Screen name="Settings" component={Settings} />
     </Tab.Navigator>
   );
 }
