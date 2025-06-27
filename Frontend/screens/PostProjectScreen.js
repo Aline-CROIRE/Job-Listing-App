@@ -52,15 +52,22 @@ export default function PostProjectScreen({ navigation }) {
             const payload = {
                 ...projectData,
                 skillsRequired: projectData.skillsRequired
-                    .split(',')
-                    .map(s => s.trim()),
+                    ? projectData.skillsRequired.split(',').map(s => s.trim())
+                    : [],
                 deliverables: projectData.deliverables
-                    .split(',')
-                    .map(d => d.trim()),
-                tags: projectData.tags.split(',').map(t => t.trim()),
+                    ? projectData.deliverables.split(',').map(d => d.trim())
+                    : [],
+                tags: projectData.tags
+                    ? projectData.tags.split(',').map(t => t.trim())
+                    : [],
+                budget: {
+                    min: Number(projectData.budget.min) || 0,
+                    max: Number(projectData.budget.max) || 0,
+                    currency: projectData.budget.currency,
+                },
             };
 
-            await axios.post(`${backendUrl}/api/projects`, projectData, {
+            await axios.post(`${backendUrl}/api/projects`, payload, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -123,7 +130,6 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlign: 'center',
         marginTop: 30,
-
     },
     input: {
         backgroundColor: '#111',

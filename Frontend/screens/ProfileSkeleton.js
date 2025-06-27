@@ -1,9 +1,7 @@
-// components/ProfileSkeleton.js
 
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 
-// This is the individual placeholder box with the shimmer animation
 const Placeholder = ({ width, height, style }) => {
   const animatedValue = new Animated.Value(0);
 

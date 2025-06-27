@@ -101,7 +101,7 @@ export default function EmployerProfile() {
                 style={styles.logoutBtn}
                 onPress={() => {
                     logout();             
-                    navigation.replace('Login'); // or navigation.navigate('Login') if not replacing
+                    navigation.navigate('Login'); // or navigation.navigate('Login') if not replacing
                 }}
             >
                 <Icon name="log-out-outline" size={20} color="#e74c3c" />
