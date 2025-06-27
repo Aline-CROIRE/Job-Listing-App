@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         borderWidth: 1,
-        borderColor: '#28a745',
+        borderColor: '#fff',
         borderRadius: 10,
         padding: 10,
         marginTop: 30,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     filter: {
         width: '32%',
         borderWidth: 1,
-        borderColor: '#28a745',
+        borderColor: '#fff',
         borderRadius: 10,
         paddingHorizontal: 8,
         paddingVertical: 4,
