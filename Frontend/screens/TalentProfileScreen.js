@@ -11,15 +11,15 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  PermissionsAndroid, // Import for Android permissions
-  Platform,           // Import to check the OS
+  PermissionsAndroid,
+  Platform,           
 } from 'react-native';
 import axios from 'axios';
 import * as ImagePicker from 'react-native-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { UserContext } from '../context/UserContext';
-import ProfileSkeleton from './ProfileSkeleton'; // Make sure this path is correct
+import ProfileSkeleton from './ProfileSkeleton'; 
 
 const backendUrl = 'http://192.168.1.151:5000';
 
@@ -70,7 +70,6 @@ export default function TalentProfileScreen({ navigation }) {
   const handlePickImage = async () => {
     console.log('[DEBUG] handlePickImage: Function called.');
 
-    // Step 1: Request permission on Android (crucial for modern versions)
     if (Platform.OS === 'android') {
       try {
         const permission = Platform.Version >= 33 
@@ -87,7 +86,6 @@ export default function TalentProfileScreen({ navigation }) {
       }
     }
 
-    // Step 2: Launch the image library
     ImagePicker.launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, async (response) => {
       console.log('[DEBUG] handlePickImage: ImagePicker callback received.');
       if (response.didCancel) {
@@ -275,7 +273,6 @@ export default function TalentProfileScreen({ navigation }) {
   );
 }
 
-// A more refined and complete StyleSheet
 const styles = StyleSheet.create({
   centeredContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { color: '#ff4d4d', fontSize: 18, fontWeight: '600', marginTop: 15 },
