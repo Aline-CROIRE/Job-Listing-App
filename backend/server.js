@@ -56,7 +56,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://192.168.1.104:${process.env.PORT || 5000}`,
+        url: `http://172.31.243.24:${process.env.PORT || 5000}`,
         description: "Development server",
       },
     ],
@@ -134,10 +134,10 @@ mongoose
     const PORT = process.env.PORT || 5000
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`)
-      console.log(`📚 API Documentation: http://192.168.1.104:${PORT}/api-docs`)
-      console.log(`🏥 Health Check: http://192.168.1.104:${PORT}/health`)
-      console.log(`💼 Jobs API: http://192.168.1.104:${PORT}/api/jobs`)
-      console.log(`📋 Projects API: http://192.168.1.104:${PORT}/api/projects`)
+      console.log(`📚 API Documentation: http://172.31.243.24:${PORT}/api-docs`)
+      console.log(`🏥 Health Check: http://172.31.243.24:${PORT}/health`)
+      console.log(`💼 Jobs API: http://172.31.243.24:${PORT}/api/jobs`)
+      console.log(`📋 Projects API: http://172.31.243.24:${PORT}/api/projects`)
     })
   })
   .catch((error) => {

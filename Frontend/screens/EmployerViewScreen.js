@@ -13,7 +13,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 
-const backendUrl = 'http://192.168.1.104:5000';
+const backendUrl = 'http://172.31.243.24:5000';
 
 const formatSalaryPlain = (salary) => {
     if (!salary) return 'Salary not specified';

@@ -15,7 +15,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
 
-const backendUrl = 'http://192.168.1.104:5000';
+const backendUrl = 'http://172.31.243.24:5000';
 
 export default function EmployerProfile() {
     const { user, token, logout } = useContext(UserContext);

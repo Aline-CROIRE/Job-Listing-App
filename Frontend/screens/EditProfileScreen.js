@@ -5,7 +5,7 @@ import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert,
 import axios from 'axios';
 import { UserContext } from '../context/UserContext';
 
-const backendUrl = 'http://192.168.1.104:5000'; // Make sure this is your correct local IP
+const backendUrl = 'http://172.31.243.24:5000'; // Make sure this is your correct local IP
 
 export default function EditProfileScreen({ route, navigation }) {
   // route.params will exist because we pass it from TalentProfileScreen
