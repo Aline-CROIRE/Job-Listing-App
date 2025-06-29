@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+// screens/BrowseScreen.js
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,261 +9,256 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
-const backendUrl = 'http://192.168.1.151:5000';
+const backendUrl = 'http://172.31.243.24:5000';
 
-const formatSalaryPlain = (salary) => {
-  if (!salary) return 'Salary not specified';
-  if (typeof salary === 'object') {
-    const min = salary.min ?? '';
-    const max = salary.max ?? '';
-    const currency = salary.currency ?? '';
-    const period = salary.period ?? 'month';
-    return `${currency} ${min} - ${max} / ${period}`;
-  }
-  return typeof salary === 'number' ? `${salary}` : String(salary);
+// A helper to format salary/budget objects nicely
+const formatSalary = (item) => {
+  const data = item.salary || item.budget;
+  if (!data || typeof data !== 'object') return 'Not specified';
+  const { min, max, currency = '', period = 'yearly' } = data;
+  if (!min && !max) return 'Not specified';
+  if (min && max) return `${currency} ${min} - ${max} / ${period}`;
+  return `${currency} ${min || max} / ${period}`;
 };
 
-const TalentViewScreen = () => {
+// Reusable card component for a clean and consistent look
+const OpportunityCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.card} onPress={onPress}>
+    <View style={styles.cardHeader}>
+      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+      <View style={[styles.typePill, item.type === 'Job' ? styles.jobPill : styles.projectPill]}>
+        <Text style={styles.typePillText}>{item.type}</Text>
+      </View>
+    </View>
+    <Text style={styles.cardCompany}>{item.company?.name || 'Individual Client'}</Text>
+    <View style={styles.infoRow}>
+        <Icon name="location-outline" size={14} color="#aaa" />
+        <Text style={styles.infoText}>{item.location?.city || item.workType}</Text>
+    </View>
+    <View style={styles.infoRow}>
+        <Icon name="cash-outline" size={14} color="#aaa" />
+        <Text style={styles.infoText}>{formatSalary(item)}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const BrowseScreen = () => {
   const navigation = useNavigation();
 
+  // State for filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [workType, setWorkType] = useState('');
-  const [workMode, setWorkMode] = useState('');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [jobs, setJobs] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [jobType, setJobType] = useState(null);
+  const [workType, setWorkType] = useState(null);
+  
+  // State for data and loading
+  const [data, setData] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
+  // Debounce search input to prevent excessive API calls
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [jobsRes, projectsRes] = await Promise.all([
-          axios.get(`${backendUrl}/api/jobs`),
-          axios.get(`${backendUrl}/api/projects`),
-        ]);
-        setJobs(jobsRes.data.jobs || []);
-        setProjects(projectsRes.data.projects || []);
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 500); // 500ms delay
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
-  const filterItems = (items, type) => {
-    return items.filter(item => {
-      const matchesSearch = item.title?.toLowerCase().includes(searchQuery.toLowerCase());
-      let matchesWorkType = true;
-      let matchesWorkMode = true;
+  // Main data fetching function
+  const fetchData = useCallback(async (isRefresh = false) => {
+    const currentPage = isRefresh ? 1 : page;
+    if (loading || (!hasNextPage && !isRefresh)) return;
 
-      if (type === 'jobs') {
-        matchesWorkType = !workType || item.jobType === workType;
-        matchesWorkMode = !workMode || item.workType === workMode;
-      } else if (type === 'projects') {
-        matchesWorkType = !workType || item.type === workType;
-        matchesWorkMode = !workMode || item.workType === workMode;
-      }
+    if (isRefresh) setRefreshing(true);
+    else if (currentPage > 1) setLoadingMore(true);
+    else setLoading(true);
 
-      return matchesSearch && matchesWorkType && matchesWorkMode;
-    });
-  };
+    try {
+      const params = {
+        page: currentPage,
+        limit: 10,
+        search: debouncedQuery,
+        jobType: jobType || undefined,
+        workType: workType || undefined,
+        status: 'open',
+      };
+      
+      // Fetch both jobs and projects with the same filters
+      const [jobsRes, projectsRes] = await Promise.all([
+        axios.get(`${backendUrl}/api/jobs`, { params }),
+        axios.get(`${backendUrl}/api/projects`, { params: { ...params, jobType: undefined } }), // Projects don't have jobType
+      ]);
+      
+      const fetchedJobs = (jobsRes.data.jobs || []).map(j => ({ ...j, type: 'Job' }));
+      const fetchedProjects = (projectsRes.data.projects || []).map(p => ({ ...p, type: 'Project' }));
+      
+      const combinedData = [...fetchedJobs, ...fetchedProjects].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const filteredJobs = typeFilter === 'Projects' ? [] : filterItems(jobs, 'jobs');
-  const filteredProjects = typeFilter === 'Jobs' ? [] : filterItems(projects, 'projects');
+      setData(isRefresh ? combinedData : [...data, ...combinedData]);
+      setHasNextPage(jobsRes.data.pagination.hasNext || projectsRes.data.pagination.hasNext);
+      setPage(currentPage + 1);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
-    );
-  }
+    } catch (err) {
+      console.error('Failed to fetch opportunities:', err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
+    }
+  }, [debouncedQuery, jobType, workType, page, loading, hasNextPage]);
 
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: 'red' }}>{error}</Text>
-      </View>
-    );
-  }
+  // Trigger a refresh when filters change
+  useEffect(() => {
+    setData([]);
+    setPage(1);
+    setHasNextPage(true);
+    fetchData(true);
+  }, [debouncedQuery, jobType, workType]);
+
+  const onRefresh = () => fetchData(true);
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Search jobs or projects..."
-        placeholderTextColor="#888"
-        style={styles.searchInput}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-
-      <View style={styles.filterRow}>
-        <View style={styles.filter}>
-          <RNPickerSelect
-            onValueChange={setWorkType}
-            placeholder={{ label: 'Work Type', value: '' }}
-            items={[
-              { label: 'Full-time', value: 'full-time' },
-              { label: 'Part-time', value: 'part-time' },
-              { label: 'Hourly', value: 'hourly' },
-              { label: 'Contract', value: 'contract' },
-            ]}
-            style={pickerStyle}
-          />
-        </View>
-        <View style={styles.filter}>
-          <RNPickerSelect
-            onValueChange={setWorkMode}
-            placeholder={{ label: 'Mode', value: '' }}
-            items={[
-              { label: 'Remote', value: 'remote' },
-              { label: 'Onsite', value: 'on-site' },
-            ]}
-            style={pickerStyle}
-          />
-        </View>
-        <View style={styles.filter}>
-          <RNPickerSelect
-            onValueChange={setTypeFilter}
-            placeholder={{ label: 'All', value: 'All' }}
-            items={[
-              { label: 'Jobs', value: 'Jobs' },
-              { label: 'Projects', value: 'Projects' },
-            ]}
-            style={pickerStyle}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.searchInputContainer}>
+          <Icon name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+          <TextInput
+            placeholder="Search by title, skill..."
+            placeholderTextColor="#888"
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
           />
         </View>
       </View>
 
-      {filteredJobs.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Jobs</Text>
-          <FlatList
-            data={filteredJobs}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.card}
-                onPress={() => navigation.navigate('JobDetails', { id: item._id })}
-              >
-                <View>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardSubtitle}>{item.jobType} | {item.workType}</Text>
-                  <Text style={styles.cardSalary}>{formatSalaryPlain(item.salary)}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        </>
-      )}
+      <View style={styles.filterRow}>
+        <RNPickerSelect
+          onValueChange={(value) => setJobType(value)}
+          placeholder={{ label: 'Job Type', value: null }}
+          items={[
+            { label: 'Full-time', value: 'full-time' },
+            { label: 'Part-time', value: 'part-time' },
+            { label: 'Contract', value: 'contract' },
+            { label: 'Internship', value: 'internship' },
+          ]}
+          style={pickerStyle}
+          useNativeAndroidPickerStyle={false}
+          Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
+        />
+        <RNPickerSelect
+          onValueChange={(value) => setWorkType(value)}
+          placeholder={{ label: 'Work Location', value: null }}
+          items={[
+            { label: 'Remote', value: 'remote' },
+            { label: 'On-site', value: 'on-site' },
+            { label: 'Hybrid', value: 'hybrid' },
+          ]}
+          style={pickerStyle}
+          useNativeAndroidPickerStyle={false}
+          Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
+        />
+      </View>
 
-      {filteredProjects.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Projects</Text>
-          <FlatList
-            data={filteredProjects}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.card}
-                onPress={() => navigation.navigate('ProjectDetails', { id: item._id })}
-              >
-                <View>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardSubtitle}>{item.workType}</Text>
-                  <Text style={styles.cardSalary}>{formatSalaryPlain(item.salary)}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        </>
+      {loading && page === 1 ? (
+        <View style={styles.center}><ActivityIndicator size="large" color="#fff" /></View>
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
+            <OpportunityCard
+              item={item}
+              onPress={() => navigation.navigate('JobDetailsScreen', { id: item._id, type: item.type })}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+          onEndReached={() => fetchData()}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 20 }} color="#fff" /> : null}
+          ListEmptyComponent={() => (
+            !loading && <View style={styles.center}>
+              <Icon name="sad-outline" size={60} color="#444" />
+              <Text style={styles.emptyText}>No Opportunities Found</Text>
+              <Text style={styles.emptySubText}>Try adjusting your search or filters.</Text>
+            </View>
+          )}
+        />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
-export default TalentViewScreen;
+const pickerStyle = {
+  inputIOS: {
+    height: 48, fontSize: 16, paddingHorizontal: 10,
+    backgroundColor: '#1a1a1a', borderRadius: 12, color: 'white',
+  },
+  inputAndroid: {
+    height: 48, fontSize: 16, paddingHorizontal: 10,
+    backgroundColor: '#1a1a1a', borderRadius: 12, color: 'white',
+  },
+  placeholder: { color: '#888' },
+  iconContainer: { top: 14, right: 15 },
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#000',
+  container: { flex: 1, backgroundColor: '#000' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 5 },
+  searchInputContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#1a1a1a', borderRadius: 12,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
+  searchIcon: { paddingLeft: 12 },
   searchInput: {
-    marginTop:25,
-    borderWidth: 1,
-    borderColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    color: '#fff',
-    marginBottom: 15,
-    backgroundColor: '#121212',
+    flex: 1, height: 48, color: '#fff', fontSize: 16, paddingHorizontal: 10,
   },
   filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    flexDirection: 'row', justifyContent: 'space-around',
+    paddingHorizontal: 16, paddingVertical: 10, gap: 10,
   },
-  filter: {
-    width: '32%',
-    borderWidth: 1,
-    borderColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    backgroundColor: '#121212',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 12,
-    marginBottom: 6,
-    color: '#fff',
-  },
+  listContent: { paddingHorizontal: 16, paddingBottom: 20 },
   card: {
-    backgroundColor: '#121212',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: '#1C1C1E', padding: 16,
+    borderRadius: 12, marginBottom: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'flex-start', marginBottom: 8,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 18, fontWeight: 'bold', color: '#fff',
+    flex: 1, marginRight: 8,
   },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#bbb',
+  typePill: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
   },
-  cardSalary: {
-    fontSize: 14,
-    color: '#28a745',
+  jobPill: { backgroundColor: '#2563EB' },
+  projectPill: { backgroundColor: '#9333EA' },
+  typePillText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  cardCompany: {
+    fontSize: 15, color: '#ccc', marginBottom: 12,
   },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  infoText: { fontSize: 14, color: '#aaa', marginLeft: 8 },
+  emptyText: {
+    color: '#888', marginTop: 15, fontSize: 18, fontWeight: '600',
+  },
+  emptySubText: { color: '#666', marginTop: 8, fontSize: 14 },
 });
 
-const pickerStyle = {
-  inputAndroid: {
-    color: '#fff',
-    paddingHorizontal: 10,
-  },
-  inputIOS: {
-    color: '#fff',
-    paddingHorizontal: 10,
-  },
-};
+export default BrowseScreen;
