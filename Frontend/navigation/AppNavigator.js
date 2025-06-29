@@ -18,6 +18,8 @@ import EmployerSettings from '../screens/EmployerSettings';
 import PostProjectScreen from '../screens/PostProjectScreen';
 import LoginScreen from '../screens/LoginScreen';
 import EditEmployerProfileScreen from '../screens/EditEmployerProfileScreen';
+import JobDetailsScreen from '../screens/JobDetailsScreen';
+import ProjectDetailsScreen from '../screens/ProjectDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -57,6 +59,8 @@ export default function AppNavigator() {
         <Stack.Screen name="EditEmployerProfile" component={EditEmployerProfileScreen} />
         <Stack.Screen name="Settings" component={EmployerSettings} />
         <Stack.Screen name="PostProject" component={PostProjectScreen} />
+        <Stack.Screen name="JobDetails" component={JobDetailsScreen} />
+        <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
 
 
