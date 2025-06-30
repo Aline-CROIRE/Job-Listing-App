@@ -17,7 +17,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const backendUrl = 'http://172.31.243.24:5000';
+const backendUrl = 'http://192.168.1.231:5000';
 
 // A helper to format salary/budget objects nicely
 const formatSalary = (item) => {
@@ -29,7 +29,7 @@ const formatSalary = (item) => {
   return `${currency} ${min || max} / ${period}`;
 };
 
-// Reusable card component for a clean and consistent look
+// Reusable card component (no changes needed here, it's already well-styled)
 const OpportunityCard = ({ item, onPress }) => (
   <TouchableOpacity style={styles.card} onPress={onPress}>
     <View style={styles.cardHeader}>
@@ -52,14 +52,10 @@ const OpportunityCard = ({ item, onPress }) => (
 
 const BrowseScreen = () => {
   const navigation = useNavigation();
-
-  // State for filters
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [jobType, setJobType] = useState(null);
   const [workType, setWorkType] = useState(null);
-  
-  // State for data and loading
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -67,15 +63,11 @@ const BrowseScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  // Debounce search input to prevent excessive API calls
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 500); // 500ms delay
+    const handler = setTimeout(() => { setDebouncedQuery(searchQuery); }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Main data fetching function
   const fetchData = useCallback(async (isRefresh = false) => {
     const currentPage = isRefresh ? 1 : page;
     if (loading || (!hasNextPage && !isRefresh)) return;
@@ -86,18 +78,13 @@ const BrowseScreen = () => {
 
     try {
       const params = {
-        page: currentPage,
-        limit: 10,
-        search: debouncedQuery,
-        jobType: jobType || undefined,
-        workType: workType || undefined,
-        status: 'open',
+        page: currentPage, limit: 10, search: debouncedQuery,
+        jobType: jobType || undefined, workType: workType || undefined, status: 'open',
       };
       
-      // Fetch both jobs and projects with the same filters
       const [jobsRes, projectsRes] = await Promise.all([
         axios.get(`${backendUrl}/api/jobs`, { params }),
-        axios.get(`${backendUrl}/api/projects`, { params: { ...params, jobType: undefined } }), // Projects don't have jobType
+        axios.get(`${backendUrl}/api/projects`, { params: { ...params, jobType: undefined } }),
       ]);
       
       const fetchedJobs = (jobsRes.data.jobs || []).map(j => ({ ...j, type: 'Job' }));
@@ -108,7 +95,6 @@ const BrowseScreen = () => {
       setData(isRefresh ? combinedData : [...data, ...combinedData]);
       setHasNextPage(jobsRes.data.pagination.hasNext || projectsRes.data.pagination.hasNext);
       setPage(currentPage + 1);
-
     } catch (err) {
       console.error('Failed to fetch opportunities:', err);
     } finally {
@@ -118,7 +104,6 @@ const BrowseScreen = () => {
     }
   }, [debouncedQuery, jobType, workType, page, loading, hasNextPage]);
 
-  // Trigger a refresh when filters change
   useEffect(() => {
     setData([]);
     setPage(1);
@@ -128,11 +113,12 @@ const BrowseScreen = () => {
 
   const onRefresh = () => fetchData(true);
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+  const renderListHeader = () => (
+    <>
+      <Text style={styles.title}>Browse Opportunities</Text>
+      <View style={styles.controlsContainer}>
         <View style={styles.searchInputContainer}>
-          <Icon name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+          <Icon name="search-outline" size={22} color="#888" style={styles.searchIcon} />
           <TextInput
             placeholder="Search by title, skill..."
             placeholderTextColor="#888"
@@ -141,37 +127,51 @@ const BrowseScreen = () => {
             onChangeText={setSearchQuery}
             returnKeyType="search"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+              <Icon name="close-circle" size={22} color="#888" />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.filterRow}>
+          <View style={styles.filterWrapper}>
+            <Icon name="briefcase-outline" size={20} color="#aaa" style={styles.filterIcon} />
+            <RNPickerSelect
+              onValueChange={(value) => setJobType(value)}
+              placeholder={{ label: 'Job Type', value: null }}
+              items={[
+                { label: 'Full-time', value: 'full-time' },
+                { label: 'Part-time', value: 'part-time' },
+                { label: 'Contract', value: 'contract' },
+                { label: 'Internship', value: 'internship' },
+              ]}
+              style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
+              Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
+            />
+          </View>
+          <View style={styles.filterWrapper}>
+            <Icon name="globe-outline" size={20} color="#aaa" style={styles.filterIcon} />
+            <RNPickerSelect
+              onValueChange={(value) => setWorkType(value)}
+              placeholder={{ label: 'Location', value: null }}
+              items={[
+                { label: 'Remote', value: 'remote' },
+                { label: 'On-site', value: 'on-site' },
+                { label: 'Hybrid', value: 'hybrid' },
+              ]}
+              style={pickerStyle}
+              useNativeAndroidPickerStyle={false}
+              Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
+            />
+          </View>
         </View>
       </View>
+    </>
+  );
 
-      <View style={styles.filterRow}>
-        <RNPickerSelect
-          onValueChange={(value) => setJobType(value)}
-          placeholder={{ label: 'Job Type', value: null }}
-          items={[
-            { label: 'Full-time', value: 'full-time' },
-            { label: 'Part-time', value: 'part-time' },
-            { label: 'Contract', value: 'contract' },
-            { label: 'Internship', value: 'internship' },
-          ]}
-          style={pickerStyle}
-          useNativeAndroidPickerStyle={false}
-          Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
-        />
-        <RNPickerSelect
-          onValueChange={(value) => setWorkType(value)}
-          placeholder={{ label: 'Work Location', value: null }}
-          items={[
-            { label: 'Remote', value: 'remote' },
-            { label: 'On-site', value: 'on-site' },
-            { label: 'Hybrid', value: 'hybrid' },
-          ]}
-          style={pickerStyle}
-          useNativeAndroidPickerStyle={false}
-          Icon={() => <Icon name="chevron-down" size={20} color="#888" />}
-        />
-      </View>
-
+  return (
+    <SafeAreaView style={styles.container}>
       {loading && page === 1 ? (
         <View style={styles.center}><ActivityIndicator size="large" color="#fff" /></View>
       ) : (
@@ -184,6 +184,7 @@ const BrowseScreen = () => {
               onPress={() => navigation.navigate('JobDetailsScreen', { id: item._id, type: item.type })}
             />
           )}
+          ListHeaderComponent={renderListHeader}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
           onEndReached={() => fetchData()}
@@ -202,63 +203,135 @@ const BrowseScreen = () => {
   );
 };
 
+// Well-styled picker styles for a consistent look
 const pickerStyle = {
   inputIOS: {
-    height: 48, fontSize: 16, paddingHorizontal: 10,
-    backgroundColor: '#1a1a1a', borderRadius: 12, color: 'white',
+    fontSize: 16,
+    paddingVertical: 12,
+    color: 'white',
+    flex: 1,
   },
   inputAndroid: {
-    height: 48, fontSize: 16, paddingHorizontal: 10,
-    backgroundColor: '#1a1a1a', borderRadius: 12, color: 'white',
+    fontSize: 16,
+    paddingVertical: 8,
+    color: 'white',
+    flex: 1,
   },
   placeholder: { color: '#888' },
-  iconContainer: { top: 14, right: 15 },
+  iconContainer: {
+    justifyContent: 'center',
+    height: '100%',
+    right: 15,
+  },
 };
 
+// Polished styles for the entire screen
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 5 },
-  searchInputContainer: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1a1a1a', borderRadius: 12,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    marginTop: 10,
   },
-  searchIcon: { paddingLeft: 12 },
+  controlsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+    marginBottom: 10,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    height: 50,
+  },
+  searchIcon: { paddingLeft: 15 },
   searchInput: {
-    flex: 1, height: 48, color: '#fff', fontSize: 16, paddingHorizontal: 10,
+    flex: 1,
+    height: 50,
+    color: '#fff',
+    fontSize: 16,
+    paddingHorizontal: 10,
+  },
+  clearButton: {
+    padding: 10,
   },
   filterRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    paddingHorizontal: 16, paddingVertical: 10, gap: 10,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  filterWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    height: 50,
+  },
+  filterIcon: {
+    paddingLeft: 15,
   },
   listContent: { paddingHorizontal: 16, paddingBottom: 20 },
   card: {
-    backgroundColor: '#1C1C1E', padding: 16,
-    borderRadius: 12, marginBottom: 12,
+    backgroundColor: '#1C1C1E',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   cardHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   cardTitle: {
-    fontSize: 18, fontWeight: 'bold', color: '#fff',
-    flex: 1, marginRight: 8,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    marginRight: 8,
   },
   typePill: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   jobPill: { backgroundColor: '#2563EB' },
   projectPill: { backgroundColor: '#9333EA' },
   typePillText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
   cardCompany: {
-    fontSize: 15, color: '#ccc', marginBottom: 12,
+    fontSize: 15,
+    color: '#ccc',
+    marginBottom: 12,
   },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  infoText: { fontSize: 14, color: '#aaa', marginLeft: 8 },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#aaa',
+    marginLeft: 8,
+  },
   emptyText: {
-    color: '#888', marginTop: 15, fontSize: 18, fontWeight: '600',
+    color: '#888',
+    marginTop: 15,
+    fontSize: 18,
+    fontWeight: '600',
   },
-  emptySubText: { color: '#666', marginTop: 8, fontSize: 14 },
+  emptySubText: {
+    color: '#666',
+    marginTop: 8,
+    fontSize: 14,
+  },
 });
 
 export default BrowseScreen;

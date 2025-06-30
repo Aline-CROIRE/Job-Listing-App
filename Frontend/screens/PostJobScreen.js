@@ -12,7 +12,7 @@ import { UserContext } from '../context/UserContext';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
-const backendUrl = 'http://172.31.243.24:5000';
+const backendUrl = 'http://192.168.1.231:5000';
 
 const initialState = {
     title: '',
