@@ -7,7 +7,7 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-const backendUrl = 'http://172.31.243.24:5000';
+const backendUrl = 'http://192.168.1.231:5000';
 
 const { width } = Dimensions.get('window');
 const cardPadding = 20;
@@ -174,7 +174,7 @@ const TalentDashboard = () => {
                 <Text style={styles.title}>Welcome, {user?.name?.split(' ')[0]} 👋</Text>
             </View>
             <View style={styles.statsRow}>
-                <StatCard icon="bookmark-outline" count={dashboardData?.stats?.savedItems ?? 0} label="Saved" onPress={() => navigation.navigate('SavedJobsScreen')} />
+                <StatCard icon="bookmark-outline" count={dashboardData?.stats?.savedItems ?? 0} label="Saved" onPress={() => navigation.navigate('SavedJobsS')} />
                 <StatCard icon="paper-plane-outline" count={dashboardData?.stats?.applicationsSent ?? 0} label="Applied" onPress={() => navigation.navigate('AppliedJobsScreen')} />
                 <StatCard icon="person-circle-outline" count={'View'} label="My Profile" onPress={() => navigation.navigate('ProfileStack')} />
             </View>

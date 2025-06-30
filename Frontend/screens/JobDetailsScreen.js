@@ -6,7 +6,7 @@ import axios from 'axios';
 import { useRoute } from '@react-navigation/native';
 import { UserContext } from '../context/UserContext';
 
-const backendUrl = 'http://172.31.243.24:5000'; // Your Backend IP
+const backendUrl = 'http://192.168.1.231:5000'; // Your Backend IP
 
 const JobDetailsScreen = () => {
   const route = useRoute();

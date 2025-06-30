@@ -8,10 +8,9 @@ export const UserProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const backendUrl = 'http://192.168.1.231:5000';
 
-  const backendUrl = 'http://172.31.243.24:5000';
-
-
+  // --- AUTHENTICATION ---
   const login = async (email, password) => {
     setLoading(true);
     try {
@@ -40,6 +39,12 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+  };
+  
+  // --- USER PROFILE ---
   const updateProfile = async (updateData) => {
     if (!token) throw new Error('User not authenticated');
     setLoading(true);
@@ -87,10 +92,121 @@ export const UserProvider = ({ children }) => {
       setLoading(false);
     }
   };
+  
+  // --- POSTINGS (JOBS & PROJECTS) ---
+  const getJobs = async () => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.get(`${backendUrl}/api/jobs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
+  };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
+  const getProjects = async () => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.get(`${backendUrl}/api/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // --- RECOMMENDATIONS & INVITATIONS ---
+  const getRecommendations = async (type, id) => {
+    if (!token) throw new Error('User not authenticated');
+    const resourceType = type === 'job' ? 'jobs' : 'projects';
+    const url = `${backendUrl}/api/${resourceType}/${id}/recommendations`;
+    try {
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const sendInvitation = async (payload) => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.post(`${backendUrl}/api/invitations`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const getMyInvitations = async () => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.get(`${backendUrl}/api/invitations/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const respondToInvitation = async (invitationId, status) => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.patch(`${backendUrl}/api/invitations/${invitationId}/respond`, 
+        { status }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // --- NOTIFICATIONS ---
+  const getMyNotifications = async () => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.get(`${backendUrl}/api/notifications/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return res;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // --- CHAT / MESSAGING ---
+  const getMessages = async (conversationId) => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.get(`${backendUrl}/api/conversations/${conversationId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const sendMessage = async (conversationId, text) => {
+    if (!token) throw new Error('User not authenticated');
+    try {
+      const res = await axios.post(`${backendUrl}/api/conversations/${conversationId}/messages`, 
+        { text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
   };
 
   return (
@@ -101,10 +217,19 @@ export const UserProvider = ({ children }) => {
         loading,
         login,
         register,
+        logout,
         updateProfile,
         updateTalentProfile,
         getUserProfile,
-        logout,
+        getJobs,
+        getProjects,
+        getRecommendations,
+        sendInvitation,
+        getMyInvitations,
+        respondToInvitation,
+        getMyNotifications,
+        getMessages,
+        sendMessage,
       }}
     >
       {children}

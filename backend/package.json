@@ -4,8 +4,8 @@
   "description": "TalentLink AI - Job and Project Listing Platform Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node init && node server.js",
+    "dev": "node init && nodemon server.js",
     "test": "jest"
   },
   "keywords": [
