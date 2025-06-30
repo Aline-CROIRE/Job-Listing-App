@@ -16,11 +16,11 @@ import {
 import { UserContext } from '../context/UserContext';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native'; // Import useRoute
 
-const backendUrl = 'http://172.31.243.24:5000'; // Your IP
+const backendUrl = 'http://192.168.1.231:5000'; // Your IP
 
-// --- Sub-components (StatCard, JobItem) can remain the same ---
+// --- Sub-components ---
 const StatCard = ({ icon, count, label, color, onPress }) => (
   <TouchableOpacity style={[styles.statCard, { backgroundColor: color }]} onPress={onPress} activeOpacity={0.8}>
     <Icon name={icon} size={30} color="#fff" />
@@ -40,6 +40,7 @@ const JobItem = ({ item, onPress }) => (
 
 const EmployerDashboard = () => {
   const navigation = useNavigation();
+  const route = useRoute(); // Hook to access route params
   const { user, token } = useContext(UserContext);
 
   const [stats, setStats] = useState({ totalJobs: 0, totalProjects: 0, totalApplications: 0 });
@@ -48,43 +49,34 @@ const EmployerDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
 
-  // [THE FIX IS HERE] This function now uses your existing routes
+  // --- Listens for a signal from the Tab Navigator to open the modal ---
+  useEffect(() => {
+    if (route.params?.openAddModal) {
+      setModalVisible(true);
+      // Reset the param so it doesn't re-trigger on other screen focus events
+      navigation.setParams({ openAddModal: false });
+    }
+  }, [route.params?.openAddModal, navigation]); // Effect dependencies
+
   const fetchDashboardData = useCallback(async () => {
     if (!token) return;
     try {
       const headers = { Authorization: `Bearer ${token}` };
-
-      // We use Promise.all to make all API calls concurrently for better performance
       const [jobsRes, projectsRes] = await Promise.all([
-        // 1. Fetch the user's jobs to get counts and recent items
         axios.get(`${backendUrl}/api/jobs/my/jobs`, { headers, params: { limit: 3, page: 1, sortBy: 'createdAt' } }),
-        
-        // 2. Fetch the user's projects to get the count
-        axios.get(`${backendUrl}/api/projects/my/projects`, { headers, params: { limit: 1 } }) // Only need the total count
+        axios.get(`${backendUrl}/api/projects/my/projects`, { headers, params: { limit: 1 } })
       ]);
 
-      // Process Jobs Response
-      if (jobsRes.data && jobsRes.data.success) {
-        setStats(prevStats => ({
-          ...prevStats,
-          totalJobs: jobsRes.data.pagination.total,
-          // You could calculate applications here if jobs data includes it
-        }));
+      if (jobsRes.data?.success) {
+        setStats(prevStats => ({ ...prevStats, totalJobs: jobsRes.data.pagination.total }));
         setRecentJobs(jobsRes.data.jobs);
       }
-
-      // Process Projects Response
-      if (projectsRes.data && projectsRes.data.success) {
-        setStats(prevStats => ({
-          ...prevStats,
-          totalProjects: projectsRes.data.pagination.total,
-        }));
+      if (projectsRes.data?.success) {
+        setStats(prevStats => ({ ...prevStats, totalProjects: projectsRes.data.pagination.total }));
       }
-
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Could not load your dashboard data.";
       console.error('Error fetching employer dashboard data:', error);
-      Alert.alert("Data Error", errorMessage);
+      Alert.alert("Data Error", error.response?.data?.message || "Could not load dashboard data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -100,7 +92,12 @@ const EmployerDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  const navigateAndCloseModal = (screenName, params = {}) => { /* ... no changes needed ... */ };
+  const navigateAndCloseModal = (screenName, params = {}) => {
+    setModalVisible(false);
+    setTimeout(() => {
+      navigation.navigate(screenName, params);
+    }, 150);
+  };
 
   if (loading) {
     return (
@@ -113,7 +110,7 @@ const EmployerDashboard = () => {
 
   return (
     <>
-      <ScrollView 
+      <ScrollView
           style={styles.container}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
       >
@@ -159,7 +156,6 @@ const EmployerDashboard = () => {
         visible={isModalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-          {/* ... The Modal JSX is correct and does not need to be changed ... */}
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>What would you like to post?</Text>
@@ -187,7 +183,7 @@ const EmployerDashboard = () => {
   );
 };
 
-// Styles are already well-designed and do not need changes.
+// --- Styles ---
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
     centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },

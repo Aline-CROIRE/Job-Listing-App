@@ -7,7 +7,7 @@ import axios from 'axios';
 import { UserContext } from '../context/UserContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const backendUrl = 'http://172.31.243.24:5000';
+const backendUrl = 'http://192.168.1.231:5000';
 
 const ApplicationStatusBadge = ({ status }) => {
     const statusInfo = {
