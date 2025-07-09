@@ -266,7 +266,7 @@ router.get("/verify-email", async (req, res) => {
     // Send welcome email
     await sendWelcomeEmail(user.email, user.name, user.role);
 
-    // Respond with confirmation HTML
+    // Respond with confirmation 
     return res.send(`
       <html style="font-family: Arial, sans-serif;">
         <body style="text-align: center; padding: 40px; background: #f0f0f0;">
